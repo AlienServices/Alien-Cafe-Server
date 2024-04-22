@@ -4,15 +4,14 @@ import { NextResponse } from 'next/server'
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
-    const data = await req.json()
-    console.log(data, 'this is the data I need')
+    const email = req.url
+    console.log(email, "this is req data")
+    
     
     try {
-        const test = await prisma.posts.create({
-            data: {
-                description: data.content,
-                title: data.title,
-                email: data.email
+        const test = await prisma.posts.findMany({
+            where: {                
+                email: email
             }
         })
         return NextResponse.json({ hello: test });

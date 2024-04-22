@@ -8,14 +8,13 @@ datasource db {
 }
 
 model posts {
-  id          String  @id @default(cuid())
-  description String? 
-  title       String? 
-  email       String?
+  id      String  @id @default(cuid())
+  content String?
+  email   String?
 }
 
 model users {
-  id       String  @id @default(cuid())
-  email    String  @unique
-  username String 
+  id       String @id @default(cuid())
+  email    String @unique
+  username String
 }
