@@ -1,19 +1,18 @@
 import { PrismaClient } from '@prisma/client'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 
 const prisma = new PrismaClient()
 
-export async function POST(req: Request) {
-    const email = req.url
-    console.log(email, "this is req data")
-    
+export async function GET(req: NextRequest) {
+    const email = req.nextUrl.searchParams.get('email') 
     
     try {
         const test = await prisma.posts.findMany({
             where: {                
-                email: email
+                email
             }
         })
+        console.log(test, "this is get all posts info")
         return NextResponse.json({ hello: test });
     } catch (error) {
         console.log(error)
