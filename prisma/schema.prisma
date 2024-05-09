@@ -11,7 +11,7 @@ model posts {
   id      String  @id @default(cuid())
   content String?
   email   String?
-  likes   String?
+  likes   String[]  
 }
 
 model users {

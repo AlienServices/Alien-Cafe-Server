@@ -12,7 +12,7 @@ export async function POST(req: Request) {
             data: {
                 content: data.content,                
                 email: data.email,
-                likes: ''
+                likes: []
             }
         })
         return NextResponse.json({ hello: test });

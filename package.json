@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "migrate": "prisma migrate dev",
+    "reset": "prisma migrate reset",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

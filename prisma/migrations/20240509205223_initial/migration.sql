@@ -3,7 +3,7 @@ CREATE TABLE "posts" (
     "id" TEXT NOT NULL,
     "content" TEXT,
     "email" TEXT,
-    "likes" TEXT NOT NULL,
+    "likes" TEXT[],
 
     CONSTRAINT "posts_pkey" PRIMARY KEY ("id")
 );
