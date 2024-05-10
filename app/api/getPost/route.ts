@@ -12,8 +12,8 @@ export async function GET(req: NextRequest) {
                 id: id ? id : undefined
             }
         })
-        console.log(await posts, 'this is post info')
-        return NextResponse.json({ Hello: await posts });
+        // console.log(await [posts], 'this is post info')
+        return NextResponse.json({ Hello: [posts] });
     } catch (error) {
         console.log(error)
     }
