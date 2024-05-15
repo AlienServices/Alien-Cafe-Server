@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
             }
         })
         console.log(test, "this is get all posts info")
-        return NextResponse.json({ hello: test });
+        return NextResponse.json({ Posts: test });
     } catch (error) {
         console.log(error)
     }

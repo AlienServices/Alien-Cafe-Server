@@ -10,7 +10,7 @@ export async function GET() {
     try {
         const posts = await prisma.posts.findMany()
         console.log(await posts, 'this is post info')
-        return NextResponse.json({ Hello: await posts });
+        return NextResponse.json({ Posts: await posts });
     } catch (error) {
         console.log(error)
     }
