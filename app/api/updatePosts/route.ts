@@ -6,22 +6,16 @@ const prisma = new PrismaClient()
 export async function POST(req: NextRequest) {
     const data = await req.json()
     const id = req.nextUrl.searchParams.get('id')
-
-    let likes = data.likes
     console.log(data, 'this is the important data')
-    if (data.likes.length < 1) {
-        likes = []
-    } 
-
     try {
-        const updateLikes = await prisma.posts.update({
+        const updateLikes = await prisma.posts.deleteMany({
             where: {
-                id: id ? id : ''
-            },
-            data: {
-                likes: likes,
-            },
+                id: {
+                    contains: id ? id : ''
+                }
+            }
         })
+        console.log(updateLikes, 'this is a test')
         return await NextResponse.json({ update: updateLikes });
     } catch (error) {
         console.log(error)

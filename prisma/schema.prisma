@@ -16,7 +16,8 @@ model posts {
 }
 
 model users {
-  id       String @id @default(cuid())
-  email    String @unique
+  id       String  @id @default(cuid())
+  email    String  @unique
   username String
+  bio      String?
 }

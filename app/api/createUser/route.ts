@@ -8,7 +8,6 @@ export async function POST(req: Request) {
     const data = await req.json()
     console.log(data, "this is the data that I need")
     try {
-
         const test = await prisma.users.create({
             data: {
                 email: data.email,
