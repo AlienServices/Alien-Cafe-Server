@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
             data: {
                 likes: data.likes,
                 content: data.content,
-                comments: data.comments
+                comments: data.comments,
+                
             },
         })
         return await NextResponse.json({  update: updateLikes });
