@@ -4,6 +4,7 @@ CREATE TABLE "posts" (
     "content" TEXT,
     "email" TEXT,
     "likes" TEXT[],
+    "comments" TEXT[],
 
     CONSTRAINT "posts_pkey" PRIMARY KEY ("id")
 );
@@ -13,6 +14,9 @@ CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "username" TEXT NOT NULL,
+    "bio" TEXT,
+    "followers" TEXT[],
+    "following" TEXT[],
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );

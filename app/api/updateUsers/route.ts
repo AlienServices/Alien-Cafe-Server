@@ -5,18 +5,19 @@ const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
     const data = await req.json()
-    const id = req.nextUrl.searchParams.get('id')    
+    const email = req.nextUrl.searchParams.get('email')    
     try {
         const updateLikes = await prisma.users.update({
             where: {
-                id: id ? id : ''
+                email: email ? email : ''
             },
             data: {
                 bio: data.bio,
-                followers: data.followers,
+                following: data.following,
                 username: data.username,
             },
         })
+        console.log(updateLikes, 'these areh teh likes updated')
         return await NextResponse.json({ update: updateLikes });
     } catch (error) {
         console.log(error)

@@ -21,4 +21,5 @@ model users {
   username  String
   bio       String?
   followers String[]
+  following String[]
 }
