@@ -13,6 +13,7 @@ model posts {
   email    String?
   likes    String[]
   comments String[]
+  date     DateTime
 }
 
 model users {

@@ -5,6 +5,7 @@ CREATE TABLE "posts" (
     "email" TEXT,
     "likes" TEXT[],
     "comments" TEXT[],
+    "date" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "posts_pkey" PRIMARY KEY ("id")
 );

@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 export async function GET(req: NextRequest) {
     const email = req.nextUrl.searchParams.get('email') 
-    
+    console.log(email,'this is the email')
     try {
         const test = await prisma.posts.findMany({
             where: {                
@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
             }
         })
         console.log(test, "this is get all posts info")
+        console.log(test, 'this is a test')
         return NextResponse.json({ Posts: test });
     } catch (error) {
         console.log(error)
