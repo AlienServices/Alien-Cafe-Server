@@ -22,5 +22,15 @@ CREATE TABLE "users" (
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "messages" (
+    "id" TEXT NOT NULL,
+    "me" TEXT NOT NULL,
+    "message" JSONB[],
+    "users" TEXT[],
+
+    CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");

@@ -24,3 +24,10 @@ model users {
   followers String[]
   following String[]
 }
+
+model messages {
+  id      String   @id @default(cuid())
+  me      String
+  message Json[]
+  users   String[]
+}
