@@ -4,11 +4,19 @@ import { NextResponse, NextRequest } from 'next/server'
 const prisma = new PrismaClient()
 
 export async function GET(req: NextRequest) {
-    const email = req.nextUrl.searchParams.get('email')
     try {
+        const email = req.nextUrl.searchParams.get('email')
         const test = await prisma.messages.findMany({
             where: {
-                me: email || ''
+                OR: [
+                    {
+                        me: email
+                    },
+                    {
+                        recipient: email,
+
+                    }
+                ]
             }
         })
         return NextResponse.json({ Posts: test });

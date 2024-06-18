@@ -26,8 +26,11 @@ CREATE TABLE "users" (
 CREATE TABLE "messages" (
     "id" TEXT NOT NULL,
     "me" TEXT NOT NULL,
+    "roomName" TEXT NOT NULL,
+    "recipient" TEXT,
     "message" JSONB[],
     "users" TEXT[],
+    "date" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );

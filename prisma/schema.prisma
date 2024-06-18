@@ -26,8 +26,11 @@ model users {
 }
 
 model messages {
-  id      String   @id @default(cuid())
-  me      String
-  message Json[]
-  users   String[]
+  id        String   @id @default(cuid())
+  me        String
+  roomName  String
+  recipient String?
+  message   Json[]
+  users     String[]
+  date      DateTime
 }
