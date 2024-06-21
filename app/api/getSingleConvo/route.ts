@@ -5,11 +5,10 @@ const prisma = new PrismaClient()
 
 export async function GET(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id')
-    console.log(id, 'this is the id')
     try {
-        const test = await prisma.message.findMany({
+        const test = await prisma.conversation.findFirst({
             where: {
-                conversationId: id || ''
+                id: id || ''
             }
         })
         console.log(test, 'this is the test')

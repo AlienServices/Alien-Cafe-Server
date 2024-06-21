@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     // const id = req.nextUrl.searchParams.get('id')
     console.log(data.status, 'this is the important data')
     try {
-        const updateLikes = await prisma.conversations.update({
+        const updateLikes = await prisma.conversation.update({
             where: {
                 id: data.id
             },
