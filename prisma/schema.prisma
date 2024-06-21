@@ -7,30 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model posts {
+model Post {
   id       String   @id @default(cuid())
   content  String?
   email    String?
   likes    String[]
   comments String[]
   date     DateTime
+  @@map("posts")
 }
 
-model users {
+model User {
   id        String   @id @default(cuid())
   email     String   @unique
   username  String
   bio       String?
   followers String[]
   following String[]
+  @@map("users")
 }
 
-model messages {
-  id        String   @id @default(cuid())
+model Conversation {
+  id        String    @id @default(cuid())
   me        String
   roomName  String
   recipient String?
-  message   Json[]
-  users     String[]
+  messages  Message[]
   date      DateTime
+  @@map("conversations")
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  date           DateTime      @default(now())
+  message        String
+  userName       String
+  status         String
+  @@map("messages")
 }

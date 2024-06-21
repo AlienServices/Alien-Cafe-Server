@@ -23,17 +23,30 @@ CREATE TABLE "users" (
 );
 
 -- CreateTable
-CREATE TABLE "messages" (
+CREATE TABLE "conversations" (
     "id" TEXT NOT NULL,
     "me" TEXT NOT NULL,
     "roomName" TEXT NOT NULL,
     "recipient" TEXT,
-    "message" JSONB[],
-    "users" TEXT[],
     "date" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "messages" (
+    "id" TEXT NOT NULL,
+    "conversationId" TEXT NOT NULL,
+    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "message" TEXT NOT NULL,
+    "userName" TEXT NOT NULL,
+    "status" TEXT NOT NULL,
 
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
+
+-- AddForeignKey
+ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

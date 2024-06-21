@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id')
     console.log(id, 'this is the id')
     try {
-        const test = await prisma.messages.findFirst({
+        const test = await prisma.conversations.findFirst({
             where: {
                 id: id || ''
             }
