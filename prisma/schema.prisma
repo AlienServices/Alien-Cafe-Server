@@ -14,6 +14,7 @@ model Post {
   likes    String[]
   comments String[]
   date     DateTime
+
   @@map("posts")
 }
 
@@ -24,6 +25,7 @@ model User {
   bio       String?
   followers String[]
   following String[]
+
   @@map("users")
 }
 
@@ -34,16 +36,18 @@ model Conversation {
   recipient String?
   messages  Message[]
   date      DateTime
+
   @@map("conversations")
 }
 
 model Message {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  date           DateTime      @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  date           DateTime     @default(now())
   message        String
   userName       String
   status         String
+
   @@map("messages")
 }
