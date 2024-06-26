@@ -4,7 +4,7 @@ import { NextResponse, NextRequest } from 'next/server'
 const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
-    console.log(req, 'whole request')
+    
     const data = await req.json()
     console.log(data, 'this is the important data')
     try {

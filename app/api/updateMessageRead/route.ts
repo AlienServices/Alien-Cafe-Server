@@ -4,15 +4,14 @@ import { NextResponse, NextRequest } from 'next/server'
 const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
-    const data = await req.json()  
-    console.log(data, 'whole request')  
+    const data = await req.json()
     try {
-        const updateLikes = await prisma.message.update({
+        const updateLikes = await prisma.message.updateMany({
             where: {
-                ...(data.id && { id: data.id })
+                conversationId: data.conversationId
             },
             data: {
-                status: data.status
+                status: "Read"
             },
         })
         return await NextResponse.json({ update: updateLikes });
