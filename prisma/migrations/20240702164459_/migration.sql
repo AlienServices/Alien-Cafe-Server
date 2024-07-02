@@ -27,7 +27,7 @@ CREATE TABLE "conversations" (
     "id" TEXT NOT NULL,
     "me" TEXT NOT NULL,
     "roomName" TEXT NOT NULL,
-    "recipient" TEXT,
+    "recipient" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
@@ -41,6 +41,7 @@ CREATE TABLE "messages" (
     "message" TEXT NOT NULL,
     "userName" TEXT NOT NULL,
     "status" TEXT NOT NULL,
+    "recipient" TEXT NOT NULL,
 
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );

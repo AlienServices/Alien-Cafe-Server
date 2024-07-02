@@ -5,8 +5,7 @@ const prisma = new PrismaClient()
 
 export async function GET(req: NextRequest) {
     try {
-        const email = req.nextUrl.searchParams.get('email')
-        
+        const email = req.nextUrl.searchParams.get('email')        
         const test = await prisma.conversation.findMany({
             where: {
                 OR: [

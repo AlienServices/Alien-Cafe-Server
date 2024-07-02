@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
                 message: data.messages,
                 date: new Date(),
                 userName: data.userName,
-                status: data.status
+                status: data.status,
+                recipient: data.recipient
             },
 
         });

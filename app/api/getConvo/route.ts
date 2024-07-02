@@ -5,6 +5,7 @@ const prisma = new PrismaClient()
 
 export async function GET(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id')
+    console.log(id, 'this is conversation id')
     try {
         const test = await prisma.message.findMany({
             where: { conversationId: id || '' },

@@ -33,21 +33,24 @@ model Conversation {
   id        String    @id @default(cuid())
   me        String
   roomName  String
-  recipient String?
+  recipient String
   messages  Message[]
   date      DateTime
 
   @@map("conversations")
 }
 
+
+
 model Message {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  date           DateTime     @default(now())
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  date           DateTime      @default(now())
   message        String
   userName       String
   status         String
+  recipient      String
 
   @@map("messages")
 }
