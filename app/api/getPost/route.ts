@@ -7,12 +7,12 @@ export async function GET(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id')
 
     try {
-        const posts = await prisma.posts.findUnique({
+        const posts = await prisma.post.findUnique({
             where: {
                 id: id ? id : undefined
             }
         })
-        // console.log(await [posts], 'this is post info')
+        console.log(posts)        
         return NextResponse.json({ Hello: [posts] });
     } catch (error) {
         console.log(error)

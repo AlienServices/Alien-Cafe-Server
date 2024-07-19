@@ -2,6 +2,7 @@
 CREATE TABLE "posts" (
     "id" TEXT NOT NULL,
     "content" TEXT,
+    "title" TEXT NOT NULL,
     "email" TEXT,
     "likes" TEXT[],
     "comments" TEXT[],

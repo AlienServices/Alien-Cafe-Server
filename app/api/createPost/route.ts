@@ -8,11 +8,12 @@ export async function POST(req: Request) {
     console.log(data, 'this is the data I need')
 
     try {
-        const test = await prisma.posts.create({
+        const test = await prisma.post.create({
             data: {
                 content: data.content,
+                title: data.title,
                 email: data.email,
-                likes: [],
+                likes: [],  
                 date: data.date
             }
         })
@@ -20,6 +21,6 @@ export async function POST(req: Request) {
     } catch (error) {
         console.log(error)
     }
-    // console.log(req, "testing info")
+    
 
 }   

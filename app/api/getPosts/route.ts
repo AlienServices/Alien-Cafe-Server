@@ -8,7 +8,7 @@ export async function GET() {
 
     console.log("hitting endpoint")
     try {
-        const posts = await prisma.posts.findMany()
+        const posts = await prisma.post.findMany()
         console.log(await posts, 'this is post info')
         return NextResponse.json({ Posts: await posts });
     } catch (error) {

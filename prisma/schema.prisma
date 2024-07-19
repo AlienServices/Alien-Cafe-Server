@@ -10,6 +10,7 @@ datasource db {
 model Post {
   id       String   @id @default(cuid())
   content  String?
+  title    String
   email    String?
   likes    String[]
   comments String[]
@@ -40,13 +41,11 @@ model Conversation {
   @@map("conversations")
 }
 
-
-
 model Message {
-  id             String        @id @default(cuid())
+  id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  date           DateTime      @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  date           DateTime     @default(now())
   message        String
   userName       String
   status         String

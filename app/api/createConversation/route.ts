@@ -5,28 +5,28 @@ const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
     const data = await req.json()
-    console.log(data.recipient, 'this is data')
+    console.log(data, 'this is data')
 
     try {
-        const updateLikes = await prisma.conversation.create({
+        const updateLikes = await prisma.conversation?.create({
             data: {
 
                 me: data.me,
                 roomName: data.roomName,
                 recipient: data.recipient,
                 date: new Date()
+
             }
         })
-        await prisma.message.createMany({
-            data: [{
+        await prisma.message.create({
+            data: {
                 conversationId: updateLikes.id,
-                message: data.messages[0].message,
+                message: data.messages.message,
                 status: 'Delivered',
-                userName: data.messages[0].userName,
+                userName: data.messages.userName,
                 date: new Date(),
                 recipient: data.recipient
-                // recipient: data.recipient
-            }]
+            }
         })
 
         return NextResponse.json({ update: updateLikes })

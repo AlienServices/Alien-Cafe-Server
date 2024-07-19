@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
     const email = req.nextUrl.searchParams.get('email') 
     console.log(email,'this is the email')
     try {
-        const test = await prisma.posts.findMany({
+        const test = await prisma.post.findMany({
             where: {                
                 email
             }

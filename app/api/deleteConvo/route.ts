@@ -7,13 +7,13 @@ export async function POST(req: NextRequest) {
     const data = await req.json()    
     console.log(data.id, 'this is the important data')
     try {
-        const updateLikes = await prisma.conversation.delete({
+        const deleteConvo = await prisma.conversation.delete({
             where: {
                 id: data.id
             },
             
         })
-        return await NextResponse.json({ update: updateLikes });
+        return await NextResponse.json({ update: deleteConvo });
     } catch (error) {
         console.log(error)
     }
