@@ -8,13 +8,18 @@ datasource db {
 }
 
 model Post {
-  id       String   @id @default(cuid())
-  content  String?
-  title    String
-  email    String?
-  likes    String[]
-  comments String[]
-  date     DateTime
+  id          String   @id @default(cuid())
+  content     String?
+  title       String
+  email       String?
+  categories  String?
+  thesis      String?
+  yesAction   String?
+  maybeAction String?
+  noAction    String?
+  likes       String[]
+  comments    String[]
+  date        DateTime
 
   @@map("posts")
 }

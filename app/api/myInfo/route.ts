@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
                 email: id ? id : undefined
             }
         })
-        console.log(posts, 'this is a user')        
+        console.log(posts, 'this is a user')
         return NextResponse.json({ Hello: posts });
     } catch (error) {
         console.log(error)

@@ -10,17 +10,21 @@ export async function POST(req: Request) {
     try {
         const test = await prisma.post.create({
             data: {
+                thesis: data.thesis,
                 content: data.content,
                 title: data.title,
                 email: data.email,
-                likes: [],  
-                date: data.date
+                likes: [],
+                date: data.date,
+                yesAction: data.yesAction,
+                noAction: data.noAction,
+                maybeAction: data.maybeAction
             }
         })
         return NextResponse.json({ hello: test });
     } catch (error) {
         console.log(error)
     }
-    
+
 
 }   
