@@ -7,6 +7,7 @@ CREATE TABLE "posts" (
     "categories" TEXT,
     "thesis" TEXT,
     "yesAction" TEXT,
+    "votes" INTEGER,
     "maybeAction" TEXT,
     "noAction" TEXT,
     "likes" TEXT[],
