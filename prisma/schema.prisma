@@ -18,9 +18,12 @@ model Post {
   votes       Int?
   maybeAction String?
   noAction    String?
+  voted       String[]
   likes       String[]
   comments    String[]
   date        DateTime
+  owner       User?    @relation(fields: [email], references: [email])
+  voteRecords Vote[]
 
   @@map("posts")
 }
@@ -29,9 +32,12 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   username  String
+  voted     Json[]
   bio       String?
   followers String[]
   following String[]
+  posts     Post[]
+  votes     Vote[]
 
   @@map("users")
 }
@@ -58,4 +64,15 @@ model Message {
   recipient      String
 
   @@map("messages")
+}
+
+model Vote {
+  id       String  @id @default(cuid())
+  vote     String
+  userId   String
+  postId   String
+  user     User    @relation(fields: [userId], references: [id])
+  post     Post    @relation(fields: [postId], references: [id])
+
+  @@map("votes")
 }

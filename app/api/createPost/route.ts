@@ -14,6 +14,7 @@ export async function POST(req: Request) {
                 content: data.content,
                 title: data.title,
                 email: data.email,
+                votes: 0,
                 likes: [],
                 date: data.date,
                 yesAction: data.yesAction,

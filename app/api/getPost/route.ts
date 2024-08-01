@@ -1,21 +1,35 @@
-import { PrismaClient } from '@prisma/client'
-import { NextResponse, NextRequest } from 'next/server'
+import { PrismaClient } from '@prisma/client';
+import { NextResponse, NextRequest } from 'next/server';
 
+const prisma = new PrismaClient();
 
-const prisma = new PrismaClient()
 export async function GET(req: NextRequest) {
-    const id = req.nextUrl.searchParams.get('id')
+    const postId = req.nextUrl.searchParams.get('id');
+    const userId = req.nextUrl.searchParams.get('userId'); // Assuming userId is passed as a query parameter
 
     try {
-        const posts = await prisma.post.findUnique({
+        const post = await prisma.post.findUnique({
             where: {
-                id: id ? id : undefined
+                id: postId ? postId : undefined
+            },
+            include: {
+                voteRecords: {
+                    where: {
+                        userId: userId ? userId : undefined
+                    }
+                }
             }
-        })
-        console.log(posts)        
-        return NextResponse.json({ Hello: [posts] });
-    } catch (error) {
-        console.log(error)
-    }
+        });
 
-}   
+        if (!post) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+
+        const userVote = post.voteRecords.length > 0 ? post.voteRecords[0] : null;
+
+        return NextResponse.json({ post, userVote });
+    } catch (error) {
+        console.log(error);
+        return NextResponse.json({ error: 'An error occurred' }, { status: 500 });
+    }
+}
