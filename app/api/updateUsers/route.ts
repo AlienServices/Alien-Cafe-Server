@@ -5,38 +5,73 @@ const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
     const data = await req.json();
-    const email = req.nextUrl.searchParams.get('email');
-    
+    console.log(data, "update user data");
+
     try {
-        // Fetch the current voted array
-        const user = await prisma.user.findUnique({
+        const { userEmail, followUserEmail } = data;
+
+        // Fetch the user being followed
+        const followUser = await prisma.user.findUnique({
             where: {
-                email: email ? email : ''
+                email: followUserEmail ? followUserEmail : ''
             },
             select: {
-                voted: true
+                followers: true
             }
         });
 
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        if (!followUser) {
+            return NextResponse.json({ error: 'User to follow not found' }, { status: 404 });
         }
 
-        // Append the new vote to the current voted array
-        const updatedVoted = user.voted ? [...user.voted, data.vote] : [data.vote];
-
-        
-        const updateLikes = await prisma.user.update({
+        // Fetch the current user
+        const currentUser = await prisma.user.findUnique({
             where: {
-                email: email ? email : ''
+                email: userEmail ? userEmail : ''
             },
-            data: {
-                voted: updatedVoted
-            },
+            select: {
+                following: true
+            }
         });
 
-        console.log(updateLikes, 'these are the likes updated');
-        return NextResponse.json({ update: updateLikes });
+        if (!currentUser) {
+            return NextResponse.json({ error: 'Current user not found' }, { status: 404 });
+        }
+
+        // Ensure the user's email is not already in the followers array
+        const updatedFollowers = followUser.followers && !followUser.followers.includes(userEmail) 
+            ? [...followUser.followers, userEmail] 
+            : followUser.followers;
+
+        // Ensure the followUserEmail is not already in the following array
+        const updatedFollowing = currentUser.following && !currentUser.following.includes(followUserEmail) 
+            ? [...currentUser.following, followUserEmail] 
+            : currentUser.following;
+
+        // Perform the updates
+        const [updatedFollowUser, updatedCurrentUser] = await prisma.$transaction([
+            prisma.user.update({
+                where: {
+                    email: followUserEmail
+                },
+                data: {
+                    followers: updatedFollowers
+                }
+            }),
+            prisma.user.update({
+                where: {
+                    email: userEmail
+                },
+                data: {
+                    following: updatedFollowing
+                }
+            })
+        ]);
+
+        return NextResponse.json({
+            updatedFollowUser,
+            updatedCurrentUser
+        });
 
     } catch (error) {
         console.log(error);

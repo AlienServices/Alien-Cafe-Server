@@ -4,7 +4,7 @@ CREATE TABLE "posts" (
     "content" TEXT,
     "title" TEXT NOT NULL,
     "email" TEXT,
-    "categories" TEXT,
+    "categories" TEXT NOT NULL,
     "thesis" TEXT,
     "yesAction" TEXT,
     "votes" INTEGER,
@@ -78,4 +78,4 @@ ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY
 ALTER TABLE "votes" ADD CONSTRAINT "votes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "votes" ADD CONSTRAINT "votes_postId_fkey" FOREIGN KEY ("postId") REFERENCES "posts"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "votes" ADD CONSTRAINT "votes_postId_fkey" FOREIGN KEY ("postId") REFERENCES "posts"("id") ON DELETE CASCADE ON UPDATE CASCADE;

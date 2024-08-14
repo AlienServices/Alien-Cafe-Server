@@ -12,7 +12,7 @@ model Post {
   content     String?
   title       String
   email       String?
-  categories  String?
+  categories  String
   thesis      String?
   yesAction   String?
   votes       Int?
@@ -35,7 +35,7 @@ model User {
   voted     Json[]
   bio       String?
   followers String[]
-  following String[]
+  following String[] 
   posts     Post[]
   votes     Vote[]
 
@@ -72,7 +72,7 @@ model Vote {
   userId   String
   postId   String
   user     User    @relation(fields: [userId], references: [id])
-  post     Post    @relation(fields: [postId], references: [id])
+  post     Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@map("votes")
 }
