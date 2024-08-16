@@ -8,11 +8,11 @@ datasource db {
 }
 
 model Post {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   content     String?
   title       String
   email       String?
-  categories  String
+  categories  String[]
   thesis      String?
   yesAction   String?
   votes       Int?
@@ -20,24 +20,25 @@ model Post {
   noAction    String?
   voted       String[]
   likes       String[]
-  comments    String[]
+  comments    Comment[]
   date        DateTime
-  owner       User?    @relation(fields: [email], references: [email])
+  owner       User?     @relation(fields: [email], references: [email])
   voteRecords Vote[]
 
   @@map("posts")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   username  String
   voted     Json[]
   bio       String?
   followers String[]
-  following String[] 
+  following String[]
   posts     Post[]
   votes     Vote[]
+  comments  Comment[]
 
   @@map("users")
 }
@@ -67,12 +68,26 @@ model Message {
 }
 
 model Vote {
-  id       String  @id @default(cuid())
-  vote     String
-  userId   String
-  postId   String
-  user     User    @relation(fields: [userId], references: [id])
-  post     Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  vote   String
+  userId String
+  postId String
+  user   User   @relation(fields: [userId], references: [id])
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@map("votes")
+}
+
+model Comment {
+  id       String    @id @default(cuid())
+  comment  String
+  postId   String
+  userId   String
+  username String
+  date     DateTime  @default(now())
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentId String? // Nullable field for the parent comment
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
 }
