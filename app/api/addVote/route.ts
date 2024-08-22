@@ -7,9 +7,10 @@ export async function POST(req: any) {
     console.log(data, 'this is the voter id');
 
     try {
-        const incrementValue = data.vote === 'yes' ? 1 : data.vote === 'no' ? -1 : 0;
+        // Check if the vote is valid
+        if (['yes', 'no', 'maybe'].includes(data.vote)) {
+            const incrementValue = data.vote === 'yes' ? 1 : data.vote === 'no' ? -1 : 0;
 
-        if (incrementValue !== 0) {
             const existingVote = await prisma.vote.findFirst({
                 where: {
                     userId: data.email,
@@ -29,17 +30,21 @@ export async function POST(req: any) {
                 },
             });
 
-            const updateLikes = await prisma.post.update({
-                where: {
-                    id: data.id,
-                },
-                data: {
-                    votes: {
-                        increment: incrementValue,
+            // Update the votes count only for "yes" or "no" votes
+            if (incrementValue !== 0) {
+                await prisma.post.update({
+                    where: {
+                        id: data.id,
                     },
-                },
-            });
-            return NextResponse.json({ vote: newVote, post: updateLikes });
+                    data: {
+                        votes: {
+                            increment: incrementValue,
+                        },
+                    },
+                });
+            }
+
+            return NextResponse.json({ vote: newVote });
         } else {
             return NextResponse.json({ error: 'Invalid vote' }, { status: 400 });
         }

@@ -81,6 +81,7 @@ model Vote {
 model Comment {
   id       String    @id @default(cuid())
   comment  String
+  vote     String
   postId   String
   userId   String
   username String

@@ -68,6 +68,7 @@ CREATE TABLE "votes" (
 CREATE TABLE "Comment" (
     "id" TEXT NOT NULL,
     "comment" TEXT NOT NULL,
+    "vote" TEXT NOT NULL,
     "postId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "username" TEXT NOT NULL,
