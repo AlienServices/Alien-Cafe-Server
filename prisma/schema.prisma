@@ -32,6 +32,7 @@ model User {
   id        String    @id @default(cuid())
   email     String    @unique
   username  String
+  bookmarks String[]
   voted     Json[]
   bio       String?
   followers String[]

@@ -6,22 +6,44 @@ const prisma = new PrismaClient()
 export async function POST(req: NextRequest) {
     const data = await req.json()
     const id = req.nextUrl.searchParams.get('id')
-    console.log(data, 'this is the important data')
-    console.log(data.likes, 'these are the likes')
+    const userId = data.userId; // Assuming the user ID is sent in the request body
+
     try {
-        const updateLikes = await prisma.posts.update({
+        // Fetch the existing post to get current likes and content
+        const existingPost = await prisma.post.findUnique({
+            where: {
+                id: id ? id : ''
+            },
+            select: {
+                likes: true,
+                content: true // Fetch existing content to keep it unchanged
+            }
+        })
+
+        // Ensure the post exists
+        if (!existingPost) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+
+        // Toggle the user ID in the likes array
+        const updatedLikes = existingPost.likes.includes(userId)
+            ? existingPost.likes.filter(like => like !== userId) // Remove user ID if already liked
+            : [...existingPost.likes, userId]; // Add user ID if not already liked
+
+        // Update the post with the new likes array, keeping the existing content
+        const updateLikes = await prisma.post.update({
             where: {
                 id: id ? id : ''
             },
             data: {
-                likes: data.likes,
-                content: data.content,
-                comments: data.comments,
-                
+                likes: updatedLikes,
+                content: existingPost.content, 
             },
         })
-        return await NextResponse.json({  update: updateLikes });
+
+        return NextResponse.json({ update: updateLikes });
     } catch (error) {
-        console.log(error)
+        console.log(error);
+        return NextResponse.json({ error: 'An error occurred while updating likes' }, { status: 500 });
     }
-}   
+}
