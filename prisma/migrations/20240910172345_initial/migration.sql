@@ -12,6 +12,7 @@ CREATE TABLE "posts" (
     "noAction" TEXT,
     "voted" TEXT[],
     "likes" TEXT[],
+    "dislikes" TEXT[],
     "date" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "posts_pkey" PRIMARY KEY ("id")
@@ -71,6 +72,8 @@ CREATE TABLE "Comment" (
     "comment" TEXT NOT NULL,
     "vote" TEXT NOT NULL,
     "postId" TEXT NOT NULL,
+    "likes" TEXT[],
+    "dislikes" TEXT[],
     "userId" TEXT NOT NULL,
     "username" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

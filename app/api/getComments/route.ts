@@ -13,14 +13,13 @@ export async function GET(req: NextRequest) {
 
         const comment = await prisma.comment.findMany({
             where: {
-                postId: id,  // Ensure id is correctly passed here
+                postId: id,  
             }
         });
 
         if (!comment) {
             return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
         }
-
 
         return NextResponse.json({ comment: comment });
     } catch (error) {

@@ -20,6 +20,7 @@ model Post {
   noAction    String?
   voted       String[]
   likes       String[]
+  dislikes    String[]
   comments    Comment[]
   date        DateTime
   owner       User?     @relation(fields: [email], references: [email])
@@ -84,6 +85,8 @@ model Comment {
   comment  String
   vote     String
   postId   String
+  likes    String[]
+  dislikes String[]
   userId   String
   username String
   date     DateTime  @default(now())
