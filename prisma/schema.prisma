@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Post {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   content     String?
   title       String
   email       String?
@@ -23,17 +23,17 @@ model Post {
   dislikes    String[]
   comments    Comment[]
   date        DateTime
-  owner       User?     @relation(fields: [email], references: [email])
+  owner       User?      @relation(fields: [email], references: [email])
   voteRecords Vote[]
+  bookmarks   Bookmark[] 
 
   @@map("posts")
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   username  String
-  bookmarks String[]
   voted     Json[]
   bio       String?
   followers String[]
@@ -41,8 +41,19 @@ model User {
   posts     Post[]
   votes     Vote[]
   comments  Comment[]
+  bookmarks Bookmark[]
 
   @@map("users")
+}
+
+model Bookmark {
+  id     String @id @default(cuid())
+  userId String
+  postId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("bookmarks")
 }
 
 model Conversation {
@@ -74,14 +85,15 @@ model Vote {
   vote   String
   userId String
   postId String
-  user   User   @relation(fields: [userId], references: [id])
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  user User @relation(fields: [userId], references: [id])
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@map("votes")
 }
 
 model Comment {
-  id       String    @id @default(cuid())
+  id       String   @id @default(cuid())
   comment  String
   vote     String
   postId   String
@@ -89,9 +101,11 @@ model Comment {
   dislikes String[]
   userId   String
   username String
-  date     DateTime  @default(now())
-  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date     DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   parentId String? // Nullable field for the parent comment
   parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[] @relation("CommentReplies")
