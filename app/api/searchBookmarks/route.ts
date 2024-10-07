@@ -4,11 +4,13 @@ import { NextResponse, NextRequest } from "next/server";
 const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
-  const searchTerm = req.nextUrl.searchParams.get("title")?.toLowerCase();  // Getting the search term from query params
-  
+  const searchTerm = req.nextUrl.searchParams.get("search")?.toLowerCase();
+  const userId = req.nextUrl.searchParams.get("userId") || undefined;
+  console.log(searchTerm, 'this is the search term')
   try {
     const bookmarks = await prisma.bookmark.findMany({
       where: {
+        userId: userId,
         post: {
           title: {
             contains: searchTerm,
@@ -17,11 +19,9 @@ export async function GET(req: NextRequest) {
         },
       },
       include: {
-        post: true,  // Including the associated post
+        post: true, 
       },
     });
-
-    console.log(bookmarks, "this is a list of bookmarks");
     return NextResponse.json({ bookmarks });
   } catch (error) {
     console.error(error);
