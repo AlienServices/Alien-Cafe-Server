@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
                     where: {
                         userId: userId ? userId : undefined
                     }
-                }
+                },
+                owner: true
             }
         });
 

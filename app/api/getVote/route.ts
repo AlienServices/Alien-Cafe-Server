@@ -7,7 +7,8 @@ export async function GET(req: NextRequest) {
     const postId = req.nextUrl.searchParams.get('postId');
     const userId = req.nextUrl.searchParams.get('userId'); // Assuming userId is passed as a query parameter
 
-    console.log(req)
+    
+    
 
     try {
         // Find the first vote record where both postId and userId match
@@ -18,9 +19,10 @@ export async function GET(req: NextRequest) {
             },
         });
 
-        if (!userVote) {
+        if (!userVote) {            
             return NextResponse.json({ error: 'Vote not found' }, { status: 404 });
         }
+        console.log(userVote, 'this is the users vote')
 
         return NextResponse.json({ userVote });
     } catch (error) {
