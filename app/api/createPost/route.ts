@@ -20,10 +20,12 @@ export async function POST(req: Request) {
                 yesAction: data.yesAction,
                 noAction: data.noAction,
                 maybeAction: data.maybeAction,
-                categories: data.categories
+                categories: [data.categories]
             }
         })
         return NextResponse.json({ hello: test });
+
+        
     } catch (error) {
         console.log(error)
     }
