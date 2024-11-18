@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "migrate": "prisma migrate dev",
     "reset": "prisma migrate reset",
     "build": "next build",
@@ -14,9 +14,9 @@
     "@prisma/client": "^5.12.1",
     "@supabase/supabase-js": "^2.45.4",
     "blurhash": "^2.0.5",
-    "next": "14.2.2",
-    "react": "^18",
-    "react-dom": "^18",
+    "next": "^14.2.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "sharp": "^0.33.5"
   },
   "devDependencies": {

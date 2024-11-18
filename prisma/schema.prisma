@@ -11,7 +11,7 @@ model Post {
   id          String     @id @default(cuid())
   content     String?
   title       String
-  email       String?
+  email       String?    // Keep email if it's needed separately, or remove it if redundant
   categories  String[]
   thesis      String?
   yesAction   String?
@@ -23,7 +23,8 @@ model Post {
   dislikes    String[]
   comments    Comment[]
   date        DateTime
-  owner       User?      @relation(fields: [email], references: [email])
+  userId      String     // Foreign key for the User relation
+  owner       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   voteRecords Vote[]
   bookmarks   Bookmark[]
 
@@ -39,7 +40,7 @@ model User {
   followers String[]
   following String[]
   blurhash  String?
-  posts     Post[]
+  posts     Post[]     // Updated to reflect the relation with Post
   votes     Vote[]
   comments  Comment[]
   bookmarks Bookmark[]
@@ -107,7 +108,7 @@ model Comment {
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  parentId String? // Nullable field for the parent comment
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  parentId String?  // Nullable field for the parent comment
+  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[] @relation("CommentReplies")
 }
