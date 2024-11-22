@@ -10,7 +10,11 @@ export async function GET(req: NextRequest) {
             where: {
                 categories: {
                     has: category
-                }
+                },
+                
+            },
+            include: {
+                owner: true
             }
         });
 

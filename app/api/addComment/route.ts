@@ -8,7 +8,6 @@ export async function POST(req: NextRequest) {
     console.log(data, "this is the data");
 
     try {
-        // Create the new comment
         const newComment = await prisma.comment.create({
             data: {
                 comment: data.comment,
@@ -19,8 +18,6 @@ export async function POST(req: NextRequest) {
                 vote: data.vote,
             },
         });
-
-        // Fetch the new comment along with its replies
         const commentWithReplies = await prisma.comment.findFirst({
             where: {
                 id: newComment.id,
@@ -28,7 +25,7 @@ export async function POST(req: NextRequest) {
             include: {
                 replies: {
                     include: {
-                        replies: true, // Include nested replies
+                        replies: true,
                     },
                 },
             },
