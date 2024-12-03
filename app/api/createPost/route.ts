@@ -16,7 +16,7 @@ export async function POST(req: Request) {
                 email: data.email,
                 owner: {
                     connect: { id: data.owner },
-                  },
+                },
                 votes: 0,
                 likes: [],
                 date: data.date,
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
         })
         return NextResponse.json({ hello: test });
 
-        
+
     } catch (error) {
         console.log(error)
     }
