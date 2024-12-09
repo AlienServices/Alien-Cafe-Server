@@ -24,13 +24,14 @@ export async function GET(req: NextRequest) {
         console.log(messages, 'all messages retrieved');
 
         // Step 2: Group messages by conversationId
-        const groupedMessages = messages.reduce((groups, message) => {
+        type MessageGroup = Record<string, typeof messages>;
+        const groupedMessages: MessageGroup = messages.reduce((groups, message) => {
             if (!groups[message.conversationId]) {
                 groups[message.conversationId] = [];
             }
             groups[message.conversationId].push(message);
             return groups;
-        }, {});
+        }, {} as MessageGroup);
 
         // Step 3: Extract the last message from each group
         const lastMessages = Object.values(groupedMessages).map(group => group[group.length - 1]);
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ Posts: lastMessages });
     } catch (error) {
-        console.log(error);
+        console.error(error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
