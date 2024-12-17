@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         // Convert email and username to lowercase
         const lowerCaseData = {
             email: data.email.toLowerCase(),
-            username: data.username.toLowerCase(),
+            username: data.username,
             followers: [],
             following: []
         };

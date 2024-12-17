@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     try {
         const test = await prisma.post.create({
             data: {
-                thesis: data.thesis,
+                thesis: data.title,
                 content: data.content,
                 title: data.title,
                 email: data.email,

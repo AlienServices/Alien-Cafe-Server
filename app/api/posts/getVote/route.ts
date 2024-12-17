@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 export async function GET(req: NextRequest) {
     const postId = req.nextUrl.searchParams.get('postId');
     const userId = req.nextUrl.searchParams.get('userId'); // Assuming userId is passed as a query parameter  
-
+    console.log(userId, postId, 'this is data')
     try {
         // Find the first vote record where both postId and userId match
         const userVote = await prisma.vote.findFirst({
