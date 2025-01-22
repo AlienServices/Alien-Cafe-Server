@@ -5,10 +5,8 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
     const postId = req.nextUrl.searchParams.get('postId');
-    const userId = req.nextUrl.searchParams.get('userId'); // Assuming userId is passed as a query parameter  
-    console.log(userId, postId, 'this is data')
-    try {
-        // Find the first vote record where both postId and userId match
+    const userId = req.nextUrl.searchParams.get('userId'); 
+    try {        
         const userVote = await prisma.vote.findFirst({
             where: {
                 postId: postId ? postId : undefined,
@@ -18,9 +16,7 @@ export async function GET(req: NextRequest) {
 
         if (!userVote) {            
             return NextResponse.json({ error: 'Vote not found' }, { status: 404 });
-        }
-        console.log(userVote, 'this is the users vote')
-
+        }        
         return NextResponse.json({ userVote });
     } catch (error) {
         console.log(error);

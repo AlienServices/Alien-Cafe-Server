@@ -8,25 +8,28 @@ datasource db {
 }
 
 model Post {
-  id          String     @id @default(cuid())
-  content     String?
-  title       String
-  email       String?    // Keep email if it's needed separately, or remove it if redundant
-  categories  String[]
-  thesis      String?
-  yesAction   String?
-  votes       Int?
-  maybeAction String?
-  noAction    String?
-  voted       String[]
-  likes       String[]
-  dislikes    String[]
-  comments    Comment[]
-  date        DateTime
-  userId      String     // Foreign key for the User relation
-  owner       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  voteRecords Vote[]
-  bookmarks   Bookmark[]
+  id                String     @id @default(cuid())
+  content           String?
+  title             String
+  email             String?
+  categories        String[]
+  subCategories     String[]
+  thesis            String?
+  yesAction         String?
+  votes             Int?
+  maybeAction       String?
+  probablyYesAction String?
+  probablyNoAction  String?
+  noAction          String?
+  voted             String[]
+  likes             String[]
+  dislikes          String[]
+  comments          Comment[]
+  date              DateTime
+  userId            String
+  owner             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voteRecords       Vote[]
+  bookmarks         Bookmark[]
 
   @@map("posts")
 }
@@ -40,7 +43,7 @@ model User {
   followers String[]
   following String[]
   blurhash  String?
-  posts     Post[]     // Updated to reflect the relation with Post
+  posts     Post[] // Updated to reflect the relation with Post
   votes     Vote[]
   comments  Comment[]
   bookmarks Bookmark[]
@@ -108,7 +111,7 @@ model Comment {
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  parentId String?  // Nullable field for the parent comment
-  parent   Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  parentId String? // Nullable field for the parent comment
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[] @relation("CommentReplies")
 }

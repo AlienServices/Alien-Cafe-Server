@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
     const data = await req.json()
-    console.log(data, 'this is the data I need')
+    
 
     try {
         const test = await prisma.post.create({
@@ -23,11 +23,13 @@ export async function POST(req: Request) {
                 yesAction: data.yesAction,
                 noAction: data.noAction,
                 maybeAction: data.maybeAction,
-                categories: [data.categories]
+                probablyNoAction: data.probablyNoAction,
+                probablyYesAction: data.probablyYesAction,
+                categories: [data.categories],
+                subCategory: data.subCategory && data.subCategory
             }
         })
         return NextResponse.json({ hello: test });
-
 
     } catch (error) {
         console.log(error)
