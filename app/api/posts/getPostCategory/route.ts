@@ -4,10 +4,11 @@ import { NextResponse, NextRequest } from 'next/server';
 const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
-    const category = req.nextUrl.searchParams.get('category');
-    const subcategories = req.nextUrl.searchParams.get('subCategory'); // Get subcategory parameter
+    const { searchParams } = req.nextUrl;    
+    const category = searchParams.get('category'); 
+    const subcategories = searchParams.get('subCategory'); 
 
-
+    
     try {
         const posts = await prisma.post.findMany({
             where: {
@@ -21,15 +22,15 @@ export async function GET(req: NextRequest) {
             orderBy: subcategories
                 ? [
                     {
-                        subCategories: 'asc', // Prioritize subcategories alphabetically if subcategory is passed
+                        subCategories: 'asc',
                     },
                     {
-                        categories: 'asc', // Then prioritize categories alphabetically
+                        categories: 'asc',
                     },
                 ]
                 : [
                     {
-                        date: 'desc', // Default sorting by most recent if no subcategory is passed
+                        categories: 'asc',
                     },
                 ],
         });

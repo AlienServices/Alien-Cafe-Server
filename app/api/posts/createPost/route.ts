@@ -26,7 +26,7 @@ export async function POST(req: Request) {
                 probablyNoAction: data.probablyNoAction,
                 probablyYesAction: data.probablyYesAction,
                 categories: [data.categories],
-                subCategory: data.subCategory && data.subCategory
+                subCategories: data.subCategory && [data.subCategory]
             }
         })
         return NextResponse.json({ hello: test });
