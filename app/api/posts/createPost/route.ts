@@ -6,13 +6,14 @@ const prisma = new PrismaClient()
 export async function POST(req: Request) {
     const data = await req.json()
 
-    
+
 
     try {
         const test = await prisma.post.create({
             data: {
                 thesis: data.title,
                 content: data.content,
+                links: data.links,
                 title: data.title,
                 email: data.email,
                 owner: {
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
                 probablyNoAction: data.probablyNoAction,
                 probablyYesAction: data.probablyYesAction,
                 categories: [data.categories],
-                subCategories: data.subCategory && [data.subCategory]
+                subCategories: data.subCategory ? [data.subCategory] : ['']
             }
         })
         return NextResponse.json({ hello: test });
