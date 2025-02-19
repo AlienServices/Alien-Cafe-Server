@@ -3,7 +3,7 @@ import { NextResponse, NextRequest } from 'next/server';
 const prisma = new PrismaClient();
 
 export async function POST(req: any) {
-    const data = await req.json();    
+    const data = await req.json();
     try {
         if (['true', 'probably true', 'neutral', 'probably false', 'false'].includes(data.vote)) {
             const incrementValue = data.vote === 'true' ? 2 : data.vote === 'probably true' ? 1 : data.vote === 'neutral' ? 0 : data.vote === 'probably false' ? -1 : -2;
@@ -26,19 +26,18 @@ export async function POST(req: any) {
                     postId: data.id,
                 },
             });
-
-            // if (incrementValue !== 0) {
-            //     await prisma.post.update({
-            //         where: {
-            //             id: data.id,
-            //         },
-            //         data: {
-            //             votes: {
-            //                 increment: incrementValue,
-            //             },
-            //         },
-            //     });
-            // }
+            if (incrementValue !== 0) {
+                await prisma.post.update({
+                    where: {
+                        id: data.id,
+                    },
+                    data: {
+                        votes: {
+                            increment: incrementValue,
+                        },
+                    },
+                });
+            }
 
             return NextResponse.json({ vote: newVote });
         } else {

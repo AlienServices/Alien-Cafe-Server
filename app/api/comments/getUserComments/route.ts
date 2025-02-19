@@ -6,13 +6,13 @@ const prisma = new PrismaClient()
 export async function GET(req: NextRequest) {
     const id = req.nextUrl.searchParams.get('id')
     try {
-        const test = await prisma.comment.findFirst({
+        const comments = await prisma.comment.findFirst({
             where: {
                 userId: id || ''
             }
         })
-        console.log(test, 'this is the test')
-        return NextResponse.json({ Posts: test });
+        // console.log(test, 'this is the test')
+        return NextResponse.json({ comments });
     } catch (error) {
         console.log(error)
     }

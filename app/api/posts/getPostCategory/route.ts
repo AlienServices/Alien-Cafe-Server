@@ -8,8 +8,6 @@ export async function GET(req: NextRequest) {
     const category = searchParams.get('category');
     const subcategories = searchParams.getAll('subCategory'); // Handle multiple subcategories
 
-    console.log(category, 'this is the category');
-    console.log(subcategories, 'these are subcategories');
 
     try {
         // Fetch all posts in the specified category
@@ -21,6 +19,8 @@ export async function GET(req: NextRequest) {
             },
             include: {
                 owner: true,
+                comments: true,
+                bookmarks: true
             },
         });
 

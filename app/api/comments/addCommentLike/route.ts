@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
             },
             select: {
                 likes: true,
-                dislikes: true, // Select dislikes to modify them as well
+                dislikes: true, 
             }
         })
 
