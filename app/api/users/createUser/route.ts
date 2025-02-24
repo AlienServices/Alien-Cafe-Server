@@ -3,8 +3,7 @@ import { NextResponse } from 'next/server';
 
 const prisma = new PrismaClient();
 
-export async function POST(req: Request) {
-    console.log("hitting endpoint");
+export async function POST(req: Request) {    
     const data = await req.json();
 
     try {

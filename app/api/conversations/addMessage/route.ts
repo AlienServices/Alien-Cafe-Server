@@ -3,10 +3,8 @@ import { NextResponse, NextRequest } from 'next/server'
 
 const prisma = new PrismaClient()
 
-export async function POST(req: NextRequest) {
-    
-    const data = await req.json()
-    console.log(data, 'this is the important data')
+export async function POST(req: NextRequest) {    
+    const data = await req.json()    
     try {
         const updateLikes = await prisma.message.create({
             data: {
@@ -26,5 +24,3 @@ export async function POST(req: NextRequest) {
         console.log(error)
     }
 }
-
-// ...(data.messages && { message: data.messages }), 

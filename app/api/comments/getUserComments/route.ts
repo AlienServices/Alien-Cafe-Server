@@ -10,12 +10,10 @@ export async function GET(req: NextRequest) {
             where: {
                 userId: id || ''
             }
-        })
-        // console.log(test, 'this is the test')
+        })        
         return NextResponse.json({ comments });
     } catch (error) {
         console.log(error)
-    }
-    // console.log(req, "testing info")
+    }    
 
 }   

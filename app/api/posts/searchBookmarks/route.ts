@@ -5,8 +5,7 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
   const searchTerm = req.nextUrl.searchParams.get("search")?.toLowerCase();
-  const userId = req.nextUrl.searchParams.get("userId") || undefined;
-  console.log(searchTerm, 'this is the search term')
+  const userId = req.nextUrl.searchParams.get("userId") || undefined;  
   try {
     const bookmarks = await prisma.bookmark.findMany({
       where: {

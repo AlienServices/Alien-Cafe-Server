@@ -4,8 +4,7 @@ import { NextResponse, NextRequest } from 'next/server'
 
 const prisma = new PrismaClient()
 export async function GET(req: NextRequest) {
-    const id = req.nextUrl.searchParams.get('email')
-    console.log(id, 'this is the id')
+    const id = req.nextUrl.searchParams.get('email')    
     try {
         const user = await prisma.user.findUnique({
             where: {

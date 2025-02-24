@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
                 id: id || ''
             }
         })
-        console.log(test, 'this is the test')
         return NextResponse.json({ Posts: test });
     } catch (error) {
         console.log(error)

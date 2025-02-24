@@ -5,8 +5,7 @@ const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
     const data = await req.json();
-    console.log(data, "this is the data");
-
+    
     try {
         const newComment = await prisma.comment.create({
             data: {

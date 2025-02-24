@@ -32,8 +32,7 @@ export async function GET(req: NextRequest) {
         },
       },
     });
-
-    console.log(posts, "Filtered posts with comments and categories");
+    
     return NextResponse.json({ posts });
   } catch (error) {
     console.log(error);

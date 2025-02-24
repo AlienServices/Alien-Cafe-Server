@@ -4,8 +4,7 @@ import { NextResponse, NextRequest } from 'next/server'
 const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
-    const data = await req.json()
-    console.log(data.id)
+    const data = await req.json()    
     try {
         const deleteConvo = await prisma.comment.delete({
             where: {

@@ -5,8 +5,7 @@ const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
     const data = await req.json()    
-    const userId = data.userId; 
-    console.log('hitting dislike')
+    const userId = data.userId;     
     try {        
         const existingPost = await prisma.post.findUnique({
             where: {

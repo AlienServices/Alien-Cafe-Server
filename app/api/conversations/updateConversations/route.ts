@@ -5,8 +5,7 @@ const prisma = new PrismaClient()
 
 export async function POST(req: NextRequest) {
     const data = await req.json()
-    // const id = req.nextUrl.searchParams.get('id')
-    console.log(data.status, 'this is the important data')
+    // const id = req.nextUrl.searchParams.get('id')    
     try {
         const updateLikes = await prisma.conversation.update({
             where: {

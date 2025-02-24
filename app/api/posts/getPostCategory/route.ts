@@ -45,8 +45,7 @@ export async function GET(req: NextRequest) {
 
                 return aSortedSubCat.localeCompare(bSortedSubCat);
             });
-        }
-        console.log(posts, 'these are the posts')
+        }        
         return NextResponse.json({ posts });
     } catch (error) {
         console.log(error);
