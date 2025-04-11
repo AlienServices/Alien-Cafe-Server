@@ -58,6 +58,9 @@ export async function POST(req: NextRequest) {
       .upload(file.name, file, {
         upsert: true,
         contentType: file.type,
+        metadata: {
+          owner: id
+        }
       });
 
     if (error) {
