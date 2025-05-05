@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 export async function POST(req: any) {
     const data = await req.json();
     try {
-        if (['true', 'probably true', 'neutral', 'probably false', 'false'].includes(data.vote)) {
+        if (['true', 'probably true', 'neutral', 'probably false', 'voted false'].includes(data.vote)) {
             const incrementValue = data.vote === 'true' ? 2 : data.vote === 'probably true' ? 1 : data.vote === 'neutral' ? 0 : data.vote === 'probably false' ? -1 : -2;
 
             const existingVote = await prisma.vote.findFirst({
@@ -16,9 +16,14 @@ export async function POST(req: any) {
             });
 
             if (existingVote) {
-                return NextResponse.json({ error: 'User has already voted on this post' }, { status: 400 });
+                return NextResponse.json({ 
+                    error: 'User has already voted on this post',
+                    details: {
+                        existingVote: existingVote.vote,
+                        voteId: existingVote.id
+                    }
+                }, { status: 400 });
             }
-
             const newVote = await prisma.vote.create({
                 data: {
                     vote: data.vote,
@@ -38,13 +43,20 @@ export async function POST(req: any) {
                     },
                 });
             }
-
             return NextResponse.json({ vote: newVote });
         } else {
-            return NextResponse.json({ error: 'Invalid vote' }, { status: 400 });
+            return NextResponse.json({ 
+                error: 'Invalid vote',
+                details: {
+                    received: data.vote,
+                    validValues: ['true', 'probably true', 'neutral', 'probably false', 'false']
+                }
+            }, { status: 400 });
         }
-    } catch (error) {
-        console.log(error);
-        return NextResponse.json({ error: 'An error occurred while updating the post' }, { status: 500 });
+    } catch (error: any) {
+        return NextResponse.json({ 
+            error: 'An error occurred while updating the post',
+            details: error?.message || 'Unknown error'
+        }, { status: 500 });
     }
 }
