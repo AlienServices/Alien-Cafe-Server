@@ -14,6 +14,7 @@ export async function POST(req: Request) {
                 thesis: data.title,
                 content: data.content,
                 links: data.links,
+                tags: data.tags,
                 title: data.title,
                 email: data.email,
                 owner: {
