@@ -12,7 +12,7 @@ model Post {
   content           String?
   title             String
   email             String?
-  categories        String[]
+  categories        Category[]
   subCategories     String[]
   thesis            String?
   links             String?
@@ -117,3 +117,27 @@ model Comment {
   parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[] @relation("CommentReplies")
 }
+model Category {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  iconPath      String?
+  isCustomIcon  Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  subcategories Subcategory[]
+  posts         Post[]
+
+  @@map("categories")
+}
+
+model Subcategory {
+  id         String    @id @default(cuid())
+  name       String
+  categoryId String
+  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@map("subcategories")
+}
+

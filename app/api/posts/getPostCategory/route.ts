@@ -5,26 +5,41 @@ const prisma = new PrismaClient();
 
 export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
-    const category = searchParams.get('category');
+    const categoryId = searchParams.get('categoryId');
     const subcategories = searchParams.getAll('subCategory'); // Handle multiple subcategories
+    console.log(categoryId)
 
+    if (!categoryId) {
+        return NextResponse.json(
+            { error: 'Category ID is required' },
+            { status: 400 }
+        );
+    }
 
     try {
         // Fetch all posts in the specified category
         const posts = await prisma.post.findMany({
             where: {
                 categories: {
-                    has: category, // Filter by category
-                },
+                    some: {
+                        id: categoryId
+                    }
+                }
             },
             include: {
                 owner: true,
                 comments: true,
-                bookmarks: true
+                bookmarks: true,
+                categories: {
+                    include: {
+                        subcategories: true
+                    }
+                }
             },
         });
 
         // Ensure `subCategories` is always an array
+        console.log(posts)
         posts.forEach((post) => {
             post.subCategories = post.subCategories || [];
         });
