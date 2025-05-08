@@ -20,7 +20,11 @@ export async function GET(req: NextRequest) {
         // Check if categories are provided; if not, search all categories
         ...(categories.length > 0 && {
           categories: {
-            hasSome: categories, // Use 'hasSome' to filter posts that match any of the provided categories
+            some: {
+              name: {
+                in: categories
+              }
+            }
           },
         }),
       },

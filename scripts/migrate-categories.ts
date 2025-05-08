@@ -19,7 +19,7 @@ async function migrateCategories() {
     const uniqueCategories = new Set<string>()
     posts.forEach(post => {
       if (Array.isArray(post.categories)) {
-        post.categories.forEach(category => uniqueCategories.add(category))
+        post.categories.forEach(category => uniqueCategories.add(category.name))
       }
     })
 
@@ -43,7 +43,7 @@ async function migrateCategories() {
     for (const post of posts) {
       if (Array.isArray(post.categories)) {
         const categoryIds = post.categories
-          .map(catName => categoryMap.get(catName))
+          .map(cat => categoryMap.get(cat.name))
           .filter((id): id is string => id !== undefined)
 
         await prisma.post.update({
