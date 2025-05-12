@@ -1,13 +1,10 @@
 import { PrismaClient } from '@prisma/client'
-import { log } from 'console'
 import { NextResponse } from 'next/server'
 
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
     const data = await req.json()
-    console.log('Received data:', JSON.stringify(data, null, 2))
-    console.log(data.categoryId)
     if (!data.categoryId) {
         return NextResponse.json({ error: 'Category ID is required' }, { status: 400 })
     }
@@ -23,6 +20,7 @@ export async function POST(req: Request) {
             data: {
                 thesis: data.title,
                 content: data.content,
+                primaryLinks: data.primaryLinks,
                 links: data.links,
                 tags: data.tags,
                 title: data.title,

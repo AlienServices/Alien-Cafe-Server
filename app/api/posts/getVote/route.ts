@@ -13,10 +13,7 @@ export async function GET(req: NextRequest) {
                 userId: userId ? userId : undefined,
             },
         });
-
-        if (!userVote) {            
-            return NextResponse.json({ error: 'Vote not found' }, { status: 404 });
-        }        
+        // Return 200 with null vote if no vote exists
         return NextResponse.json({ userVote });
     } catch (error) {
         console.log(error);

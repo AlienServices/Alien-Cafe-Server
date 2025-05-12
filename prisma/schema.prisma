@@ -15,6 +15,7 @@ model Post {
   categories        Category[]
   subCategories     String[]
   thesis            String?
+  primaryLinks      String?
   links             String?
   yesAction         String?
   votes             Int?

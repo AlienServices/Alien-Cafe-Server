@@ -15,7 +15,7 @@
     "seed-subcategories": "ts-node scripts/seed-subcategories.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.12.1",
+    "@prisma/client": "^6.7.0",
     "@supabase/supabase-js": "^2.45.4",
     "blurhash": "^2.0.5",
     "jsonwebtoken": "^9.0.2",
@@ -32,7 +32,7 @@
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.2",
-    "prisma": "^5.12.1",
+    "prisma": "^6.7.0",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   }
