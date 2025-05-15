@@ -12,7 +12,8 @@
     "migrate-categories": "ts-node scripts/migrate-categories.ts",
     "seed-categories": "ts-node scripts/seed-categories.ts",
     "remove-subcategories": "ts-node scripts/remove-subcategories.ts",
-    "seed-subcategories": "ts-node scripts/seed-subcategories.ts"
+    "seed-subcategories": "ts-node scripts/seed-subcategories.ts",
+    "create-search-index": "ts-node --project scripts/tsconfig.json scripts/create-search-index.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",

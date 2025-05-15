@@ -12,27 +12,28 @@ model Post {
   content           String?
   title             String
   email             String?
-  categories        Category[]
-  subCategories     String[]
   thesis            String?
-  primaryLinks      String?
-  links             String?
   yesAction         String?
   votes             Int?
   maybeAction       String?
-  probablyYesAction String?
-  probablyNoAction  String?
   noAction          String?
   voted             String[]
   likes             String[]
   dislikes          String[]
-  comments          Comment[]
   date              DateTime
   userId            String
+  probablyNoAction  String?
+  probablyYesAction String?
+  subCategories     String[]
+  links             String?
+  tags              String[]   @default([])
+  primaryLinks      String?
+  searchVector      String?    @db.Text
+  comments          Comment[]
+  bookmarks         Bookmark[]
   owner             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   voteRecords       Vote[]
-  bookmarks         Bookmark[]
-  tags              String[] @default([])
+  categories        Category[] @relation("CategoryToPost")
 
   @@map("posts")
 }
@@ -46,10 +47,10 @@ model User {
   followers String[]
   following String[]
   blurhash  String?
-  posts     Post[] // Updated to reflect the relation with Post
-  votes     Vote[]
   comments  Comment[]
   bookmarks Bookmark[]
+  posts     Post[]
+  votes     Vote[]
 
   @@map("users")
 }
@@ -58,8 +59,8 @@ model Bookmark {
   id     String @id @default(cuid())
   userId String
   postId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("bookmarks")
 }
@@ -69,8 +70,8 @@ model Conversation {
   me        String
   roomName  String
   recipient String
-  messages  Message[]
   date      DateTime
+  messages  Message[]
 
   @@map("conversations")
 }
@@ -78,12 +79,12 @@ model Conversation {
 model Message {
   id             String       @id @default(cuid())
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   date           DateTime     @default(now())
   message        String
   userName       String
   status         String
   recipient      String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }
@@ -93,15 +94,14 @@ model Vote {
   vote   String
   userId String
   postId String
-
-  user User @relation(fields: [userId], references: [id])
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
 
   @@map("votes")
 }
 
 model Comment {
-  id       String   @id @default(cuid())
+  id       String    @id @default(cuid())
   comment  String
   vote     String
   postId   String
@@ -109,36 +109,34 @@ model Comment {
   dislikes String[]
   userId   String
   username String
-  date     DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  parentId String? // Nullable field for the parent comment
+  date     DateTime  @default(now())
+  parentId String?
   parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[] @relation("CommentReplies")
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
 model Category {
-  id            String         @id @default(cuid())
-  name          String         @unique
+  id            String        @id @default(cuid())
+  name          String        @unique
   iconPath      String?
-  isCustomIcon  Boolean        @default(false)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  isCustomIcon  Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   subcategories Subcategory[]
-  posts         Post[]
+  posts         Post[]        @relation("CategoryToPost")
 
   @@map("categories")
 }
 
 model Subcategory {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   name       String
   categoryId String
-  category   Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("subcategories")
 }
-
