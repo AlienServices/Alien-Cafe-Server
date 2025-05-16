@@ -9,7 +9,7 @@ async function migrateCategories() {
       select: {
         id: true,
         categories: true,
-        subCategories: true
+        subcategories: true
       }
     })
 

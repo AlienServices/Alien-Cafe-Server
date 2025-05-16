@@ -24,7 +24,7 @@ model Post {
   userId            String
   probablyNoAction  String?
   probablyYesAction String?
-  subCategories     String[]
+  subcategories     Subcategory[] @relation("PostToSubcategory")
   links             String?
   tags              String[]   @default([])
   primaryLinks      String?
@@ -137,6 +137,7 @@ model Subcategory {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts      Post[]   @relation("PostToSubcategory")
 
   @@map("subcategories")
 }

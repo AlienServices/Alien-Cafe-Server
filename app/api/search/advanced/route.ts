@@ -13,6 +13,8 @@ export async function GET(req: Request) {
   const limit = parseInt(searchParams.get('limit') || '10')
   const sortBy = searchParams.get('sortBy') || 'relevance'
 
+  console.log('Incoming search params:', { query, categories, subcategories, tags, page, limit, sortBy })
+
   try {
     // Build the search query
     const where: Prisma.PostWhereInput = {
@@ -38,8 +40,12 @@ export async function GET(req: Request) {
           }
         }] : []),
         ...(subcategories?.length ? [{
-          subCategories: {
-            hasSome: subcategories
+          subcategories: {
+            some: {
+              name: {
+                in: subcategories
+              }
+            }
           }
         }] : []),
         ...(tags?.length ? [{
@@ -50,8 +56,11 @@ export async function GET(req: Request) {
       ]
     }
 
+    console.log('Constructed Prisma where filter:', JSON.stringify(where, null, 2))
+
     // If no filters are applied at all, return an error
     if (!query && !categories?.length && !subcategories?.length && !tags?.length) {
+      console.log('No search parameters provided, returning error')
       return NextResponse.json({ 
         error: 'At least one search parameter (query, categories, subcategories, or tags) is required' 
       }, { status: 400 })
@@ -75,12 +84,16 @@ export async function GET(req: Request) {
       take: limit
     }
 
+    console.log('Final Prisma searchQuery:', JSON.stringify(searchQuery, null, 2))
+
     const [posts, total] = await Promise.all([
       prisma.post.findMany(searchQuery),
       prisma.post.count({
         where: searchQuery.where
       })
     ])
+
+    console.log('Prisma results:', { postsCount: posts.length, total })
 
     return NextResponse.json({
       posts,

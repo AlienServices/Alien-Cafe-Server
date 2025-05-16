@@ -31,7 +31,7 @@ async function createSearchIndexes() {
         post.probablyNoAction,
         post.tags?.join(' '),
         post.categories?.map(cat => cat.name).join(' '),
-        post.subCategories?.join(' '),
+        post.categories?.flatMap(cat => (cat as any).subcategories || []).join(' '),
         post.owner?.username
       ].filter(Boolean).join(' ')
 

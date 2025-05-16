@@ -41,13 +41,13 @@ export async function GET(req: NextRequest) {
         // Ensure `subCategories` is always an array
         console.log(posts)
         posts.forEach((post) => {
-            post.subCategories = post.subCategories || [];
+            (post as any).subCategories = post.categories.flatMap(cat => cat.subcategories || []);
         });
 
         if (subcategories.length > 0) {
             posts.sort((a, b) => {
-                const aMatches = a.subCategories.filter(subCat => subcategories.includes(subCat)).length;
-                const bMatches = b.subCategories.filter(subCat => subcategories.includes(subCat)).length;
+                const aMatches = (a as any).subCategories.filter((subCat: any) => subcategories.includes(subCat)).length;
+                const bMatches = (b as any).subCategories.filter((subCat: any) => subcategories.includes(subCat)).length;
 
                 // ✅ Ensure posts with matching subcategories come first
                 if (aMatches !== bMatches) {
@@ -55,8 +55,8 @@ export async function GET(req: NextRequest) {
                 }
 
                 // ✅ Within matching posts, sort by alphabetical order of subcategories
-                const aSortedSubCat = a.subCategories.slice().sort().join(', ');
-                const bSortedSubCat = b.subCategories.slice().sort().join(', ');
+                const aSortedSubCat = (a as any).subCategories.slice().sort().join(', ');
+                const bSortedSubCat = (b as any).subCategories.slice().sort().join(', ');
 
                 return aSortedSubCat.localeCompare(bSortedSubCat);
             });
