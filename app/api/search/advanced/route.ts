@@ -33,7 +33,7 @@ export async function GET(req: Request) {
         ...(categories?.length ? [{
           categories: {
             some: {
-              name: {
+              id: {
                 in: categories
               }
             }
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
         ...(subcategories?.length ? [{
           subcategories: {
             some: {
-              name: {
+              id: {
                 in: subcategories
               }
             }
