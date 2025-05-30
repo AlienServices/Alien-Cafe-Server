@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
                     }
                 }
             },
+            orderBy: { date: 'desc' },
             skip,
             take: limit,
         });
