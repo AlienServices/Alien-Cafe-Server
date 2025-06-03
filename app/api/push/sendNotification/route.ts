@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import admin from '../../../lib/firebaseAdmin';
+import admin from '../../../../lib/firebaseAdmin';
 
 export async function POST(req: NextRequest) {
   const { token, title, body, data } = await req.json();
