@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-// import admin from '../../../../lib/firebaseAdmin';
+import admin from '../../../../lib/firebaseAdmin';
 
 // This tells Next.js to handle this route dynamically
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-  // TODO: Implement Firebase notification logic later
-  return NextResponse.json({ success: true, message: 'Notification endpoint temporarily disabled' });
-  
-  /* Original implementation commented out for now
   try {
     let body;
     try {
@@ -18,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { token, title, body: messageBody, data } = body;
+    const { token, title, body: messageBody, data, platform } = body;
 
     if (!token || !title || !messageBody) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -30,7 +26,19 @@ export async function POST(request: NextRequest) {
         title,
         body: messageBody,
       },
-      data: data || {},
+      data: {
+        ...(data || {}),
+        platform: platform || 'fcm', // Add platform info to data
+      },
+      // Add APNs specific configuration if needed
+      apns: platform === 'ios' ? {
+        payload: {
+          aps: {
+            sound: 'default',
+            badge: 1,
+          },
+        },
+      } : undefined,
     };
 
     const response = await admin.messaging().send(message);
@@ -39,5 +47,4 @@ export async function POST(request: NextRequest) {
     console.error('Error in sendNotification:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  */
 } 

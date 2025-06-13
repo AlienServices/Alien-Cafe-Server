@@ -1,26 +1,41 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { log } from 'console';
 
 const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
-  console.log('registerDevice');
-  console.log(req);
-  const { userId, token, platform } = await req.json();
-  console.log(userId, token, platform);
-  if (!userId || !token || !platform) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-  }
-  log('registerDevice', userId, token, platform);
   try {
-    const deviceToken = await prisma.deviceToken.upsert({
-      where: { token },
-      update: { userId, platform },
-      create: { userId, token, platform },
+    const body = await req.json();
+    console.log('Received registration request:', body);
+    
+    const { userId, token, platform } = body;
+    
+    if (!userId || !token || !platform) {
+      console.error('Missing required fields:', { userId, token, platform });
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    console.log('Attempting to register device token:', {
+      userId,
+      tokenLength: token.length,
+      platform
     });
-    return NextResponse.json({ success: true, deviceToken });
+
+    try {
+      const deviceToken = await prisma.deviceToken.upsert({
+        where: { token },
+        update: { userId, platform },
+        create: { userId, token, platform },
+      });
+      
+      console.log('Successfully registered device token:', deviceToken);
+      return NextResponse.json({ success: true, deviceToken });
+    } catch (error: any) {
+      console.error('Database error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
   } catch (error: any) {
+    console.error('Request processing error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 } 
