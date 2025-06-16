@@ -5,15 +5,33 @@ import * as admin from 'firebase-admin';
 const prisma = new PrismaClient();
 
 // Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-  try {
-    const serviceAccount = JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON || '{}');
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  } catch (error) {
-    console.error('Error initializing Firebase Admin:', error);
+let firebaseApp: admin.app.App | undefined;
+try {
+  if (!admin.apps.length) {
+    const serviceAccount = process.env.FCM_SERVICE_ACCOUNT_JSON;
+    if (!serviceAccount) {
+      throw new Error('FCM_SERVICE_ACCOUNT_JSON environment variable is not set');
+    }
+    
+    try {
+      const parsedServiceAccount = JSON.parse(serviceAccount);
+      firebaseApp = admin.initializeApp({
+        credential: admin.credential.cert(parsedServiceAccount)
+      });
+      console.log('Firebase Admin initialized successfully');
+    } catch (parseError) {
+      console.error('Error parsing FCM_SERVICE_ACCOUNT_JSON:', parseError);
+      throw new Error('Invalid FCM_SERVICE_ACCOUNT_JSON format');
+    }
+  } else {
+    const app = admin.apps[0];
+    if (app) {
+      firebaseApp = app;
+    }
   }
+} catch (error) {
+  console.error('Failed to initialize Firebase Admin:', error);
+  // Don't throw here, let the app continue without Firebase
 }
 
 export async function POST(req: NextRequest) {
@@ -53,6 +71,11 @@ export async function POST(req: NextRequest) {
         const deviceTokens = await prisma.deviceToken.findMany({ where: { userId } });
         console.log(`[Notification] Found ${deviceTokens.length} device tokens for user ${userId}`);
         
+        if (!firebaseApp) {
+          console.error('[Notification] Firebase not initialized, skipping notifications');
+          return;
+        }
+
         await Promise.all(deviceTokens.map(async (dt) => {
           console.log(`[Notification] Sending to device: ${dt.platform} (${dt.token.slice(0, 10)}...)`);
           try {
@@ -72,6 +95,7 @@ export async function POST(req: NextRequest) {
             console.log(`[Notification] Successfully sent message:`, response);
           } catch (error) {
             console.error(`[Notification] Error sending notification:`, error);
+            // Don't throw here, continue with other notifications
           }
         }));
       }));
