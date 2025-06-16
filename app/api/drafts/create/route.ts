@@ -1,7 +1,20 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
 
 const prisma = new PrismaClient();
+
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON || '{}');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (error) {
+    console.error('Error initializing Firebase Admin:', error);
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,21 +56,20 @@ export async function POST(req: NextRequest) {
         await Promise.all(deviceTokens.map(async (dt) => {
           console.log(`[Notification] Sending to device: ${dt.platform} (${dt.token.slice(0, 10)}...)`);
           try {
-            const response = await fetch(`${process.env.PUSH_API_URL || 'http://localhost:3000'}/api/push/sendNotification`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                token: dt.token,
-                platform: dt.platform,
+            const message = {
+              notification: {
                 title: `You've been added as a collaborator!`,
                 body: `You've been added as a collaborator to '${draft.title}' by ${draft.owner.username}`,
-                data: { type: 'draft', draftId: draft.id },
-              }),
-            });
-            console.log(`[Notification] Response status: ${response.status}`);
-            if (!response.ok) {
-              console.error(`[Notification] Failed to send notification: ${response.statusText}`);
-            }
+              },
+              data: {
+                type: 'draft',
+                draftId: draft.id,
+              },
+              token: dt.token,
+            };
+
+            const response = await admin.messaging().send(message);
+            console.log(`[Notification] Successfully sent message:`, response);
           } catch (error) {
             console.error(`[Notification] Error sending notification:`, error);
           }

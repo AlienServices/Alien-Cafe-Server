@@ -1,7 +1,20 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
+import * as admin from 'firebase-admin';
 
 const prisma = new PrismaClient();
+
+// Initialize Firebase Admin if not already initialized
+if (!admin.apps.length) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FCM_SERVICE_ACCOUNT_JSON || '{}');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  } catch (error) {
+    console.error('Error initializing Firebase Admin:', error);
+  }
+}
 
 export async function PUT(req: NextRequest) {
   try {
@@ -46,16 +59,24 @@ export async function PUT(req: NextRequest) {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         const deviceTokens = await prisma.deviceToken.findMany({ where: { userId } });
         await Promise.all(deviceTokens.map(async (dt: any) => {
-          await fetch(`${process.env.PUSH_API_URL || 'http://localhost:3000'}/api/push/sendNotification`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          try {
+            const message = {
+              notification: {
+                title: `You've been added as a collaborator!`,
+                body: `You've been added as a collaborator to '${draft.title}' by ${user?.username}`,
+              },
+              data: {
+                type: 'draft',
+                draftId,
+              },
               token: dt.token,
-              title: `You've been added as a collaborator!`,
-              body: `You've been added as a collaborator to '${draft.title}' by ${user?.username}`,
-              data: { type: 'draft', draftId },
-            }),
-          });
+            };
+
+            const response = await admin.messaging().send(message);
+            console.log(`[Notification] Successfully sent message:`, response);
+          } catch (error) {
+            console.error(`[Notification] Error sending notification:`, error);
+          }
         }));
       }));
       // Remove old collaborators
