@@ -3,6 +3,7 @@ import { NextResponse, NextRequest } from 'next/server'
 
 const prisma = new PrismaClient()
 export async function GET(req: NextRequest) {
+    console.log('My info route hit')
     const email = req.nextUrl.searchParams.get('email')    
     
     if (!email) {
