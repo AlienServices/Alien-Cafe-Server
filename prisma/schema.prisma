@@ -35,6 +35,8 @@ model Post {
   voteRecords       Vote[]
   categories        Category[] @relation("CategoryToPost")
   collaborators     String[]   @default([])
+  media             PostMedia[]
+  linkPreviews      LinkPreview[]
 
   @@map("posts")
 }
@@ -197,4 +199,40 @@ model FriendRequest {
 
   @@unique([senderId, receiverId])
   @@map("friend_requests")
+}
+
+model PostMedia {
+  id          String   @id @default(cuid())
+  postId      String
+  filename    String
+  originalName String
+  fileSize    Int
+  mimeType    String
+  storagePath String   // Supabase storage path
+  thumbnailPath String? // Generated thumbnail path
+  altText     String?
+  caption     String?
+  isVideo     Boolean  @default(false)
+  processingStatus String @default("completed") // pending, processing, completed, failed
+  uploadDate  DateTime @default(now())
+  order       Int      @default(0) // For ordering media in gallery
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_media")
+}
+
+model LinkPreview {
+  id          String   @id @default(cuid())
+  postId      String
+  url         String
+  title       String?
+  description String?
+  imageUrl    String?
+  domain      String?
+  faviconUrl  String?
+  createdAt   DateTime @default(now())
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, url])
+  @@map("link_previews")
 }

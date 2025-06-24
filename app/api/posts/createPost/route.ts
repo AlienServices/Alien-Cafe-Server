@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { NextResponse } from 'next/server'
+import { extractUrls } from '../../../../utils/urlUtils'
 
 const prisma = new PrismaClient()
 
@@ -20,7 +21,8 @@ export async function POST(req: Request) {
             contentLength: data.content?.length,
             linksCount: data.links?.length,
             primaryLinksCount: data.primaryLinks?.length,
-            tagsCount: data.tags?.length
+            tagsCount: data.tags?.length,
+            linkPreviewsCount: data.linkPreviews?.length || 0
         })
 
         const post = await prisma.post.create({
@@ -48,12 +50,26 @@ export async function POST(req: Request) {
                 },
                 subcategories: data.subCategoryIds && Array.isArray(data.subCategoryIds)
                     ? { connect: data.subCategoryIds.map((id: string) => ({ id })) }
+                    : undefined,
+                // Create link previews if provided
+                linkPreviews: data.linkPreviews && Array.isArray(data.linkPreviews)
+                    ? {
+                        create: data.linkPreviews.map((preview: any) => ({
+                            url: preview.url,
+                            title: preview.title,
+                            description: preview.description,
+                            imageUrl: preview.imageUrl,
+                            domain: preview.domain,
+                            faviconUrl: preview.faviconUrl
+                        }))
+                    }
                     : undefined
             },
             include: {
                 categories: true,
                 owner: true,
-                subcategories: true
+                subcategories: true,
+                linkPreviews: true
             }
         })
 
@@ -62,6 +78,21 @@ export async function POST(req: Request) {
         console.log('Connected categories:', Array.isArray(post.categories) ? post.categories.map((c: any) => c.name) : [])
         console.log('Connected subcategories:', Array.isArray(post.subcategories) ? post.subcategories.map((s: any) => s.name) : [])
         console.log('Owner:', post.owner?.username)
+        console.log('Link previews created:', post.linkPreviews?.length || 0)
+
+        // Extract URLs from content and generate link previews
+        console.log('=== EXTRACTING URLs AND GENERATING LINK PREVIEWS ===')
+        const allContent = [
+            post.content,
+            post.links,
+            post.primaryLinks
+        ].filter(Boolean).join(' ');
+        
+        const urls = extractUrls(allContent);
+        console.log('Found URLs:', urls);
+
+        // Generate link previews for each URL (this will be handled by the frontend)
+        // The frontend will call the fetchLinkPreview endpoint for each URL
 
         console.log('=== CREATING SEARCH VECTOR ===')
         const searchableContent = [
@@ -93,13 +124,17 @@ export async function POST(req: Request) {
             include: {
                 categories: true,
                 owner: true,
-                subcategories: true
+                subcategories: true,
+                linkPreviews: true
             }
         })
 
         console.log('=== POST CREATION COMPLETED ===')
         console.log('Final post ID:', updatedPost.id)
-        return NextResponse.json({ post: updatedPost });
+        return NextResponse.json({ 
+            post: updatedPost,
+            urls: urls // Return URLs for frontend to generate previews
+        });
 
     } catch (error: any) {
         console.error('=== POST CREATION FAILED ===')

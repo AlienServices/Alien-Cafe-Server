@@ -43,6 +43,34 @@ export async function GET(req: NextRequest) {
                             id: true,
                             name: true
                         }
+                    },
+                    media: {
+                        select: {
+                            id: true,
+                            filename: true,
+                            originalName: true,
+                            mimeType: true,
+                            storagePath: true,
+                            thumbnailPath: true,
+                            altText: true,
+                            caption: true,
+                            isVideo: true,
+                            order: true
+                        },
+                        orderBy: {
+                            order: 'asc'
+                        }
+                    },
+                    linkPreviews: {
+                        select: {
+                            id: true,
+                            url: true,
+                            title: true,
+                            description: true,
+                            imageUrl: true,
+                            domain: true,
+                            faviconUrl: true
+                        }
                     }
                 },
                 orderBy: {
