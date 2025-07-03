@@ -3,7 +3,12 @@ import { NextResponse } from "next/server";
 export function middleware(req: any) {
   const origin = req.headers.get("origin");
   const allowedOrigins = [
-    "*"
+    "*",
+    "http://10.1.10.231:3000",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000"
   ];
 
   const response = NextResponse.next();

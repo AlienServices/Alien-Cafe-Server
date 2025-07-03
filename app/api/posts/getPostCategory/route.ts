@@ -46,7 +46,8 @@ export async function GET(req: NextRequest) {
                     include: {
                         subcategories: true
                     }
-                }
+                },
+                linkPreviews: true
             },
             orderBy: { date: 'desc' },
             skip,

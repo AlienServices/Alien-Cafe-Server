@@ -18,7 +18,8 @@ export async function GET(req: NextRequest) {
                         userId: userId ? userId : undefined
                     }
                 },
-                owner: true
+                owner: true,
+                linkPreviews: true
             }
         });
 

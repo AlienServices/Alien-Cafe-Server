@@ -34,9 +34,7 @@ export async function POST(req: Request) {
                 tags: data.tags,
                 title: data.title,
                 email: data.email,
-                owner: {
-                    connect: { id: data.owner },
-                },
+                userId: data.owner,
                 votes: 0,
                 likes: [],
                 date: data.date,
