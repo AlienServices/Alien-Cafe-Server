@@ -161,10 +161,21 @@ function getEmbedUrl(url: string): string | null {
     
     // YouTube - add origin parameter for better compatibility
     if (domain.includes('youtube.com') || domain.includes('youtu.be')) {
-      const videoId = domain.includes('youtu.be') 
-        ? urlObj.pathname.slice(1) 
-        : urlObj.searchParams.get('v');
+      let videoId = null;
+      
+      // Handle different YouTube URL formats
+      if (domain.includes('youtu.be')) {
+        videoId = urlObj.pathname.slice(1);
+      } else if (domain.includes('youtube.com')) {
+        videoId = urlObj.searchParams.get('v');
+        // Also check for other YouTube URL patterns
+        if (!videoId && urlObj.pathname.includes('/watch')) {
+          videoId = urlObj.searchParams.get('v');
+        }
+      }
+      
       if (videoId) {
+        console.log('YouTube video ID extracted:', videoId);
         const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
         // Use dynamic origin based on environment
         const origin = process.env.NODE_ENV === 'production' 
@@ -172,8 +183,14 @@ function getEmbedUrl(url: string): string | null {
           : 'http://localhost:3000';
         embedUrl.searchParams.set('origin', origin);
         embedUrl.searchParams.set('enablejsapi', '1');
-        return embedUrl.toString();
+        embedUrl.searchParams.set('rel', '0'); // Don't show related videos
+        embedUrl.searchParams.set('modestbranding', '1'); // Minimal YouTube branding
+        
+        const finalUrl = embedUrl.toString();
+        console.log('Generated YouTube embed URL:', finalUrl);
+        return finalUrl;
       }
+      console.warn('Could not extract YouTube video ID from URL:', url);
       return null;
     }
     

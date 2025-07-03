@@ -42,13 +42,18 @@ export function middleware(req: any) {
   // Content Security Policy to allow video embeds
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://platform.twitter.com https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv",
-    "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv https://platform.twitter.com https://www.facebook.com https://www.instagram.com https://www.tiktok.com",
-    "img-src 'self' data: https: http:",
-    "media-src 'self' https: http:",
-    "connect-src 'self' https: http:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://platform.twitter.com https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv https://www.googletagmanager.com https://www.google-analytics.com",
+    "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv https://platform.twitter.com https://www.facebook.com https://www.instagram.com https://www.tiktok.com https://www.youtube-nocookie.com",
+    "img-src 'self' data: https: http: blob:",
+    "media-src 'self' https: http: blob:",
+    "connect-src 'self' https: http: wss: ws:",
     "style-src 'self' 'unsafe-inline' https:",
-    "font-src 'self' https: data:"
+    "font-src 'self' https: data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+    "upgrade-insecure-requests"
   ].join("; ");
   
   response.headers.set("Content-Security-Policy", csp);
