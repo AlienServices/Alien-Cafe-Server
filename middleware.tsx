@@ -8,7 +8,14 @@ export function middleware(req: any) {
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
+    "https://alien-cafe-server.vercel.app",
+    "https://aliencafe.vercel.app",
+    "https://alien-cafe.vercel.app",
+    "https://alien-cafe-server.onrender.com",
+    "https://aliencafe.onrender.com",
+    "https://alien-cafe-frontend.onrender.com",
+    "https://aliencafe-backend.onrender.com"
   ];
 
   const response = NextResponse.next();
@@ -28,6 +35,23 @@ export function middleware(req: any) {
     "Access-Control-Allow-Headers",
     "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version",
   );
+
+  // Allow iframe embedding for video content
+  response.headers.set("X-Frame-Options", "SAMEORIGIN");
+  
+  // Content Security Policy to allow video embeds
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://platform.twitter.com https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv",
+    "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv https://platform.twitter.com https://www.facebook.com https://www.instagram.com https://www.tiktok.com",
+    "img-src 'self' data: https: http:",
+    "media-src 'self' https: http:",
+    "connect-src 'self' https: http:",
+    "style-src 'self' 'unsafe-inline' https:",
+    "font-src 'self' https: data:"
+  ].join("; ");
+  
+  response.headers.set("Content-Security-Policy", csp);
 
   if (req.method === "OPTIONS") {
     return new NextResponse(null, { status: 204, headers: response.headers });

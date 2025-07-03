@@ -159,32 +159,67 @@ function getEmbedUrl(url: string): string | null {
     const urlObj = new URL(url);
     const domain = urlObj.hostname.toLowerCase();
     
-    // YouTube
+    // YouTube - add origin parameter for better compatibility
     if (domain.includes('youtube.com') || domain.includes('youtu.be')) {
       const videoId = domain.includes('youtu.be') 
         ? urlObj.pathname.slice(1) 
         : urlObj.searchParams.get('v');
-      return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+      if (videoId) {
+        const embedUrl = new URL(`https://www.youtube.com/embed/${videoId}`);
+        // Use dynamic origin based on environment
+        const origin = process.env.NODE_ENV === 'production' 
+          ? 'https://alien-cafe-server.onrender.com' 
+          : 'http://localhost:3000';
+        embedUrl.searchParams.set('origin', origin);
+        embedUrl.searchParams.set('enablejsapi', '1');
+        return embedUrl.toString();
+      }
+      return null;
     }
     
-    // Vimeo
+    // Vimeo - add origin parameter
     if (domain.includes('vimeo.com')) {
       const videoId = urlObj.pathname.slice(1);
-      return videoId ? `https://player.vimeo.com/video/${videoId}` : null;
+      if (videoId) {
+        const embedUrl = new URL(`https://player.vimeo.com/video/${videoId}`);
+        // Use dynamic origin based on environment
+        const origin = process.env.NODE_ENV === 'production' 
+          ? 'https://alien-cafe-server.onrender.com' 
+          : 'http://localhost:3000';
+        embedUrl.searchParams.set('origin', origin);
+        return embedUrl.toString();
+      }
+      return null;
     }
     
-    // Dailymotion
+    // Dailymotion - add origin parameter
     if (domain.includes('dailymotion.com')) {
       const videoId = urlObj.pathname.split('/').pop();
-      return videoId ? `https://www.dailymotion.com/embed/video/${videoId}` : null;
+      if (videoId) {
+        const embedUrl = new URL(`https://www.dailymotion.com/embed/video/${videoId}`);
+        // Use dynamic origin based on environment
+        const origin = process.env.NODE_ENV === 'production' 
+          ? 'https://alien-cafe-server.onrender.com' 
+          : 'http://localhost:3000';
+        embedUrl.searchParams.set('origin', origin);
+        return embedUrl.toString();
+      }
+      return null;
     }
     
-    // Twitch
+    // Twitch - use proper parent parameter for production
     if (domain.includes('twitch.tv')) {
       const pathParts = urlObj.pathname.split('/');
       if (pathParts.length >= 3 && pathParts[1] === 'videos') {
         const videoId = pathParts[2];
-        return `https://player.twitch.tv/?video=v${videoId}&parent=${urlObj.hostname}`;
+        const embedUrl = new URL('https://player.twitch.tv/');
+        embedUrl.searchParams.set('video', `v${videoId}`);
+        // Use dynamic parent based on environment
+        const parent = process.env.NODE_ENV === 'production' 
+          ? 'alien-cafe-server.onrender.com' 
+          : 'localhost';
+        embedUrl.searchParams.set('parent', parent);
+        return embedUrl.toString();
       }
     }
     
@@ -530,6 +565,14 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('Generated preview data:', previewData);
+    console.log('Environment info:', {
+      hostname: request.headers.get('host'),
+      origin: request.headers.get('origin'),
+      userAgent: request.headers.get('user-agent'),
+      isVideo: previewData.isVideo,
+      embedUrl: previewData.embedUrl,
+      platform: previewData.platform
+    });
 
     // Cache the result
     linkPreviewCache.set(url, {
