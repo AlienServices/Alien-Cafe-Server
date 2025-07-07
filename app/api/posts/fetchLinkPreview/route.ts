@@ -55,6 +55,10 @@ const VIDEO_DOMAINS = [
 
 const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
 
+// YouTube API configuration
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+const YOUTUBE_API_BASE_URL = 'https://www.googleapis.com/youtube/v3';
+
 function isBlockedDomain(url: string): boolean {
   try {
     const urlObj = new URL(url);
@@ -153,26 +157,113 @@ function isVideoUrl(url: string): boolean {
   }
 }
 
+// Extract YouTube video ID from various URL formats
+function extractYouTubeVideoId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.toLowerCase();
+    
+    // Handle youtu.be URLs
+    if (domain.includes('youtu.be')) {
+      return urlObj.pathname.slice(1);
+    }
+    
+    // Handle youtube.com URLs
+    if (domain.includes('youtube.com')) {
+      // Standard watch URLs
+      if (urlObj.pathname.includes('/watch')) {
+        return urlObj.searchParams.get('v');
+      }
+      
+      // Short URLs
+      if (urlObj.pathname.includes('/y/')) {
+        return urlObj.searchParams.get('v');
+      }
+      
+      // Embed URLs
+      if (urlObj.pathname.includes('/embed/')) {
+        return urlObj.pathname.split('/embed/')[1];
+      }
+      
+      // Channel video URLs
+      if (urlObj.pathname.includes('/channel/') && urlObj.searchParams.get('v')) {
+        return urlObj.searchParams.get('v');
+      }
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Fetch YouTube video data using the official API
+async function fetchYouTubeVideoData(videoId: string): Promise<any> {
+  if (!YOUTUBE_API_KEY) {
+    console.warn('YouTube API key not configured, falling back to scraping');
+    return null;
+  }
+
+  try {
+    console.log('🎥 Fetching YouTube video data for ID:', videoId);
+    
+    const apiUrl = `${YOUTUBE_API_BASE_URL}/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+    
+    const response = await fetch(apiUrl, {
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ YouTube API error:', response.status, errorText);
+      throw new Error(`YouTube API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.items || data.items.length === 0) {
+      console.warn('❌ No video found for ID:', videoId);
+      return null;
+    }
+
+    const video = data.items[0];
+    const snippet = video.snippet;
+    
+    console.log('✅ YouTube API data received:', {
+      title: snippet.title,
+      channelTitle: snippet.channelTitle,
+      publishedAt: snippet.publishedAt,
+      duration: video.contentDetails?.duration,
+      viewCount: video.statistics?.viewCount
+    });
+
+    return {
+      id: videoId,
+      title: snippet.title,
+      description: snippet.description,
+      channelTitle: snippet.channelTitle,
+      publishedAt: snippet.publishedAt,
+      thumbnails: snippet.thumbnails,
+      duration: video.contentDetails?.duration,
+      viewCount: video.statistics?.viewCount,
+      likeCount: video.statistics?.likeCount,
+      commentCount: video.statistics?.commentCount
+    };
+  } catch (error) {
+    console.error('❌ YouTube API fetch error:', error);
+    return null;
+  }
+}
+
 // Get embed URL for platform videos
 function getEmbedUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
     const domain = urlObj.hostname.toLowerCase();
     
-    // YouTube - add origin parameter for better compatibility
+    // YouTube - use API data when available, fallback to URL parsing
     if (domain.includes('youtube.com') || domain.includes('youtu.be')) {
-      let videoId = null;
-      
-      // Handle different YouTube URL formats
-      if (domain.includes('youtu.be')) {
-        videoId = urlObj.pathname.slice(1);
-      } else if (domain.includes('youtube.com')) {
-        videoId = urlObj.searchParams.get('v');
-        // Also check for other YouTube URL patterns
-        if (!videoId && urlObj.pathname.includes('/watch')) {
-          videoId = urlObj.searchParams.get('v');
-        }
-      }
+      const videoId = extractYouTubeVideoId(url);
       
       if (videoId) {
         console.log('YouTube video ID extracted:', videoId);
@@ -423,6 +514,64 @@ export async function POST(request: NextRequest) {
     // Platform-specific handling
     const domain = urlObj.hostname.toLowerCase();
     let platformData = null;
+
+    // YouTube handling with API
+    if (domain.includes('youtube.com') || domain.includes('youtu.be')) {
+      console.log('🎥 Detected YouTube URL:', url);
+      
+      const videoId = extractYouTubeVideoId(url);
+      if (videoId) {
+        console.log('🎥 Extracted YouTube video ID:', videoId);
+        
+        // Try YouTube API first
+        const youtubeData = await fetchYouTubeVideoData(videoId);
+        
+        if (youtubeData) {
+          console.log('🎥 Using YouTube API data');
+          
+          // Get the best thumbnail
+          const thumbnail = youtubeData.thumbnails?.maxres || 
+                           youtubeData.thumbnails?.high || 
+                           youtubeData.thumbnails?.medium || 
+                           youtubeData.thumbnails?.default;
+          
+          const embedUrl = getEmbedUrl(url);
+          
+          const previewData = {
+            url: url,
+            title: youtubeData.title || '',
+            description: youtubeData.description ? 
+              youtubeData.description.substring(0, 200) + (youtubeData.description.length > 200 ? '...' : '') : '',
+            imageUrl: thumbnail?.url || null,
+            domain: urlObj.hostname,
+            faviconUrl: 'https://www.youtube.com/favicon.ico',
+            cachedAt: new Date().toISOString(),
+            isVideo: true,
+            embedUrl: embedUrl,
+            platform: 'youtube',
+            // Additional YouTube-specific data
+            channelTitle: youtubeData.channelTitle,
+            publishedAt: youtubeData.publishedAt,
+            duration: youtubeData.duration,
+            viewCount: youtubeData.viewCount,
+            likeCount: youtubeData.likeCount,
+            commentCount: youtubeData.commentCount
+          };
+
+          console.log('🎥 Final YouTube preview data:', JSON.stringify(previewData, null, 2));
+
+          // Cache the result
+          linkPreviewCache.set(url, {
+            data: previewData,
+            timestamp: Date.now()
+          });
+
+          return NextResponse.json(previewData);
+        } else {
+          console.log('🎥 YouTube API failed, falling back to scraping');
+        }
+      }
+    }
 
     // X (Twitter) handling
     if (domain.includes('x.com') || domain.includes('twitter.com')) {
