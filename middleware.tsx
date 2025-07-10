@@ -44,7 +44,7 @@ export function middleware(req: any) {
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://platform.twitter.com https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv https://www.googletagmanager.com https://www.google-analytics.com",
     "frame-src 'self' https://www.youtube.com https://player.vimeo.com https://www.dailymotion.com https://player.twitch.tv https://platform.twitter.com https://www.facebook.com https://www.instagram.com https://www.tiktok.com https://www.youtube-nocookie.com",
-    "img-src 'self' data: https: http: blob:",
+    "img-src 'self' data: https: http: blob: https://pbs.twimg.com https://abs.twimg.com",
     "media-src 'self' https: http: blob:",
     "connect-src 'self' https: http: wss: ws:",
     "style-src 'self' 'unsafe-inline' https:",
