@@ -1,3 +1,4 @@
+import { log } from 'console';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Rate limiting
@@ -12,6 +13,8 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 // Platform-specific API caches
 const xEmbedCache = new Map<string, { data: any; timestamp: number }>();
 const telegramCache = new Map<string, { data: any; timestamp: number }>();
+const rumbleCache = new Map<string, { data: any; timestamp: number }>();
+const odyseeCache = new Map<string, { data: any; timestamp: number }>();
 const PLATFORM_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // Blocked domains (internal/private networks)
@@ -50,7 +53,11 @@ const VIDEO_DOMAINS = [
   'instagram.com',
   'tiktok.com',
   'x.com',
-  'twitter.com'
+  'twitter.com',
+  't.me',
+  'telegram.me',
+  'rumble.com',
+  'odysee.com'
 ];
 
 const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
@@ -275,6 +282,72 @@ function extractYouTubeVideoId(url: string): string | null {
   }
 }
 
+// Extract Rumble video ID from various URL formats
+function extractRumbleVideoId(url: string): string | null {
+  console.log('🔍 DEBUG: extractRumbleVideoId function called with URL:', url);
+  try {
+    const urlObj = new URL(url);
+    console.log('🔍 Rumble URL:', url);
+    console.log('🔍 Rumble URL object:', {
+      href: urlObj.href,
+      origin: urlObj.origin, 
+      protocol: urlObj.protocol,
+      hostname: urlObj.hostname,
+      pathname: urlObj.pathname,
+      search: urlObj.search
+    });
+    const domain = urlObj.hostname.toLowerCase();
+    
+    if (domain.includes('rumble.com')) {
+      // Handle embed URLs: https://rumble.com/embed/{videoId}/
+      if (urlObj.pathname.includes('/embed/')) {
+        const embedMatch = urlObj.pathname.match(/\/embed\/([^\/]+)/);
+        return embedMatch ? embedMatch[1] : null;
+      }
+      
+      // Handle regular video URLs: https://rumble.com/v{videoId}-title
+      const videoMatch = urlObj.pathname.match(/\/v([^-]+)/);
+      if (videoMatch) return videoMatch[1];
+      
+      // Handle alternative Rumble URL formats: https://rumble.com/v{videoId}
+      const altMatch = urlObj.pathname.match(/\/v([^\/]+)/);
+      return altMatch ? altMatch[1] : null;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Extract Odysee video ID from various URL formats
+function extractOdyseeVideoId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.toLowerCase();
+    
+    if (domain.includes('odysee.com')) {
+      // Handle embed URLs: https://odysee.com/$/embed/{videoId}
+      if (urlObj.pathname.includes('/$/embed/')) {
+        const embedMatch = urlObj.pathname.match(/\/\$\/embed\/([^\/]+)/);
+        return embedMatch ? embedMatch[1] : null;
+      }
+      
+      // Handle regular video URLs: https://odysee.com/@channel/{videoId}:{hash}
+      const videoMatch = urlObj.pathname.match(/@[^\/]+\/([^:]+)/);
+      if (videoMatch) return videoMatch[1];
+      
+      // Handle alternative Odysee URL formats: https://odysee.com/{videoId}:{hash}
+      const altMatch = urlObj.pathname.match(/^\/([^:]+)/);
+      return altMatch ? altMatch[1] : null;
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // Fetch YouTube video data using the official API
 async function fetchYouTubeVideoData(videoId: string): Promise<any> {
   if (!YOUTUBE_API_KEY) {
@@ -286,10 +359,21 @@ async function fetchYouTubeVideoData(videoId: string): Promise<any> {
     console.log('🎥 Fetching YouTube video data for ID:', videoId);
     
     const apiUrl = `${YOUTUBE_API_BASE_URL}/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+    console.log('🎥 YouTube API URL (without key):', `${YOUTUBE_API_BASE_URL}/videos?part=snippet,contentDetails,statistics&id=${videoId}&key=***`);
+    console.log('🎥 YouTube API fetch headers:', {
+      'Accept': 'application/json',
+    });
     
     const response = await fetch(apiUrl, {
+      headers: {
+        'Accept': 'application/json',
+      },
       signal: AbortSignal.timeout(10000),
     });
+    
+    console.log('🎥 YouTube API response status:', response.status);
+    console.log('🎥 YouTube API response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('🎥 YouTube API response ok:', response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -424,6 +508,25 @@ function getEmbedUrl(url: string): string | null {
       return null;
     }
     
+    // Rumble - rely on embed URL from Rumble's data, not generate our own
+    if (domain.includes('rumble.com')) {
+      console.log('🎥 Rumble URL detected - embed URL should come from Rumble data');
+      return null; // Let the frontend handle embed URL from server response
+    }
+    
+    // Odysee - construct proper embed URL
+    if (domain.includes('odysee.com')) {
+      const videoId = extractOdyseeVideoId(url);
+      if (videoId) {
+        console.log('🎥 Odysee video ID extracted:', videoId);
+        const embedUrl = `https://odysee.com/embed/${videoId}`;
+        console.log('Generated Odysee embed URL:', embedUrl);
+        return embedUrl;
+      }
+      console.log('🎥 Using original Odysee URL for iframe:', url);
+      return url;
+    }
+    
     return null;
   } catch {
     return null;
@@ -463,6 +566,11 @@ async function fetchTweetData(tweetId: string): Promise<any> {
     console.log('🐦 Fetching tweet data for ID:', tweetId);
     
     const apiUrl = `${X_API_BASE_URL}/tweets/${tweetId}?expansions=attachments.media_keys,author_id&media.fields=url,preview_image_url,type,width,height&user.fields=username,name,profile_image_url&tweet.fields=created_at,text,entities`;
+    console.log('🐦 X API URL:', apiUrl);
+    console.log('🐦 X API fetch headers:', {
+      'Authorization': 'Bearer ***',
+      'Content-Type': 'application/json',
+    });
     
     const response = await fetch(apiUrl, {
       headers: {
@@ -471,6 +579,10 @@ async function fetchTweetData(tweetId: string): Promise<any> {
       },
       signal: AbortSignal.timeout(10000),
     });
+    
+    console.log('🐦 X API response status:', response.status);
+    console.log('🐦 X API response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('🐦 X API response ok:', response.ok);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -533,6 +645,436 @@ function extractXOpenGraphData(html: string, url: string) {
     author,
     isXContent: html.includes('twitter.com') || html.includes('x.com') || html.includes('og:site_name')
   };
+}
+
+// Fetch Rumble embed data
+async function fetchRumbleEmbed(url: string): Promise<any> {
+  console.log('🔍 Starting Rumble link preview fetch for URL:', url);
+  
+  // TEMPORARY: Clear cache to force Strategy 3
+  rumbleCache.delete(url);
+  
+  try {
+    // Check cache first
+    const cached = rumbleCache.get(url);
+    if (cached && (Date.now() - cached.timestamp) < PLATFORM_CACHE_DURATION) {
+      console.log('📦 Returning cached Rumble preview data for:', url);
+      return cached.data;
+    }
+
+    console.log('🌐 Fetching fresh Rumble preview data for:', url);
+    console.log('🔍 DEBUG: extractRumbleVideoId will only be called in Strategy 3 if Strategies 1 & 2 fail');
+
+    // Strategy 1: Try Rumble's oEmbed API
+    try {
+      console.log('🔄 Strategy 1: Trying Rumble oEmbed API');
+      const oembedUrl = `https://rumble.com/api/Media/oembed.json?url=${encodeURIComponent(url)}`;
+      console.log('🎬 Rumble oEmbed URL:', oembedUrl);
+      console.log('🎬 Rumble oEmbed fetch headers:', {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+      });
+      
+      const oembedResponse = await fetch(oembedUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+        },
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      console.log('🎬 Rumble oEmbed response status:', oembedResponse.status);
+      console.log('🎬 Rumble oEmbed response headers:', Object.fromEntries(oembedResponse.headers.entries()));
+      console.log('🎬 Rumble oEmbed response ok:', oembedResponse.ok);
+      
+      if (oembedResponse.ok) {
+        const oembedData = await oembedResponse.json();
+        console.log('✅ Rumble oEmbed API success:', JSON.stringify(oembedData, null, 2));
+        
+        // Check if oEmbed response contains embed HTML or URL
+        const embedHtml = oembedData.html || '';
+        const embedUrl = oembedData.embed_url || '';
+        
+        // Extract embed URL from HTML if available
+        let extractedEmbedUrl = embedUrl;
+        if (!extractedEmbedUrl && embedHtml) {
+          const iframeMatch = embedHtml.match(/src=["']([^"']+)["']/i);
+          if (iframeMatch) {
+            extractedEmbedUrl = iframeMatch[1];
+          }
+        }
+        
+        console.log('🎥 Rumble oEmbed data:', {
+          embedUrl: embedUrl,
+          embedHtml: embedHtml ? embedHtml.substring(0, 200) + '...' : null,
+          extractedEmbedUrl: extractedEmbedUrl
+        });
+        
+        const oembedResult = {
+          url: url,
+          title: oembedData.title || '',
+          description: oembedData.description || '',
+          imageUrl: oembedData.thumbnail_url || null,
+          domain: new URL(url).hostname,
+          faviconUrl: 'https://rumble.com/favicon.ico',
+          isVideo: true,
+          author: oembedData.author_name || '',
+          site: oembedData.author_url || '',
+          platform: 'rumble',
+          embedUrl: extractedEmbedUrl || null
+        };
+        
+        console.log('✅ Using Rumble oEmbed data:', JSON.stringify(oembedResult, null, 2));
+        
+        // Cache the result
+        rumbleCache.set(url, {
+          data: oembedResult,
+          timestamp: Date.now()
+        });
+        
+        return oembedResult;
+      }
+    } catch (oembedError) {
+      console.log('⚠️ Rumble oEmbed API failed:', oembedError);
+    }
+
+    // Strategy 2: Try direct HTML scraping
+    try {
+      console.log('🔄 Strategy 2: Trying direct HTML scraping');
+      console.log('🎬 Rumble fetch headers:', {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      });
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+
+      console.log('🎬 Rumble fetch response status:', response.status);
+      console.log('🎬 Rumble fetch response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('🎬 Rumble fetch response ok:', response.ok);
+
+      if (response.ok) {
+        const html = await response.text();
+        console.log('📄 HTML response length:', html.length);
+        
+        // Extract metadata from HTML
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        
+        const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+        const description = descMatch ? descMatch[1].trim() : '';
+        
+        const imageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+        const imageUrl = imageMatch ? imageMatch[1].trim() : null;
+        console.log("this is the html", html)
+        // Look for embed URLs in HTML
+        let embedUrl = null;
+        
+        // Check for iframe src attributes
+        const iframeMatch = html.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/i);
+        if (iframeMatch) {
+          embedUrl = iframeMatch[1];
+        }
+        
+        // Check for embed URLs in meta tags
+        const embedMetaMatch = html.match(/<meta[^>]*(?:property|name)=["']embed_url["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+        if (embedMetaMatch) {
+          embedUrl = embedMetaMatch[1];
+        }
+        
+        // Look for other potential embed URL patterns in HTML
+        const embedPatterns = [
+          /embed_url["']?\s*:\s*["']([^"']+)["']/i,
+          /embedUrl["']?\s*:\s*["']([^"']+)["']/i,
+          /iframe_url["']?\s*:\s*["']([^"']+)["']/i,
+          /player_url["']?\s*:\s*["']([^"']+)["']/i
+        ];
+        
+        for (const pattern of embedPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            embedUrl = match[1];
+            break;
+          }
+        }
+        
+        console.log('🎥 Rumble embed URL search in HTML:', {
+          iframeMatch: iframeMatch ? iframeMatch[1] : null,
+          embedMetaMatch: embedMetaMatch ? embedMetaMatch[1] : null,
+          finalEmbedUrl: embedUrl
+        });
+        
+        const scrapeResult = {
+          url: url,
+          title: title || 'Rumble Video',
+          description: description || 'Watch this video on Rumble',
+          imageUrl: imageUrl,
+          domain: new URL(url).hostname,
+          faviconUrl: 'https://rumble.com/favicon.ico',
+          isVideo: true,
+          author: '',
+          site: '',
+          platform: 'rumble',
+          embedUrl: embedUrl
+        };
+        
+        console.log('✅ Using scraped data:', JSON.stringify(scrapeResult, null, 2));
+        
+        // Cache the result
+        rumbleCache.set(url, {
+          data: scrapeResult,
+          timestamp: Date.now()
+        });
+        
+        return scrapeResult;
+      }
+    } catch (scrapeError) {
+      console.log('⚠️ Direct scraping failed:', scrapeError);
+    }
+
+    // Strategy 3: URL-based fallback
+    console.log('🔄 Strategy 3: Using URL-based fallback');
+    console.log('🔍 DEBUG: About to call extractRumbleVideoId - this is where line 289 will be reached');
+    const urlObj = new URL(url);
+    const videoId = extractRumbleVideoId(url);
+    
+    console.log('🎥 Rumble fallback - no embed URL found from Rumble');
+    
+    const fallbackData = {
+      url: url,
+      title: `Rumble Video ${videoId ? `(${videoId})` : ''}`,
+      description: 'Watch this video on Rumble',
+      imageUrl: null,
+      domain: urlObj.hostname,
+      faviconUrl: 'https://rumble.com/favicon.ico',
+      isVideo: true,
+      author: '',
+      site: '',
+      platform: 'rumble',
+      embedUrl: null // No embed URL available from Rumble
+    };
+    
+    console.log('✅ Using URL fallback data:', JSON.stringify(fallbackData, null, 2));
+    
+    // Cache the result
+    rumbleCache.set(url, {
+      data: fallbackData,
+      timestamp: Date.now()
+    });
+    
+    return fallbackData;
+
+  } catch (error) {
+    console.error('❌ All Rumble strategies failed:', error);
+    return null;
+  }
+}
+
+// Fetch Odysee embed data
+async function fetchOdyseeEmbed(url: string): Promise<any> {
+  console.log('🔍 Starting Odysee link preview fetch for URL:', url);
+  
+  // TEMPORARY: Clear cache to force fresh fetch
+  odyseeCache.delete(url);
+  
+  try {
+    // Check cache first
+    const cached = odyseeCache.get(url);
+    if (cached && (Date.now() - cached.timestamp) < PLATFORM_CACHE_DURATION) {
+      console.log('📦 Returning cached Odysee preview data for:', url);
+      return cached.data;
+    }
+
+    console.log('🌐 Fetching fresh Odysee preview data for:', url);
+
+    // Strategy 1: Try direct HTML scraping (Odysee doesn't have oEmbed)
+    try {
+      console.log('🔄 Strategy 1: Trying direct HTML scraping');
+      console.log('🔗 Odysee fetch headers:', {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      });
+      
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'DNT': '1',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+
+      console.log('🔗 Odysee fetch response status:', response.status);
+      console.log('🔗 Odysee fetch response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('🔗 Odysee fetch response ok:', response.ok);
+
+      if (response.ok) {
+        const html = await response.text();
+        console.log('📄 HTML response length:', html.length);
+        
+        // Extract metadata from HTML
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        
+        const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+        const description = descMatch ? descMatch[1].trim() : '';
+        
+        const imageMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+        const imageUrl = imageMatch ? imageMatch[1].trim() : null;
+        
+        // Extract channel name from URL
+        const urlObj = new URL(url);
+        const channelMatch = urlObj.pathname.match(/@([^\/]+)/);
+        const channel = channelMatch ? channelMatch[1] : '';
+        
+        // Look for embed URLs in HTML
+        let embedUrl = null;
+        
+        // Check for iframe src attributes
+        const iframeMatch = html.match(/<iframe[^>]*src=["']([^"']+)["'][^>]*>/i);
+        if (iframeMatch) {
+          embedUrl = iframeMatch[1];
+        }
+        
+        // Check for embed URLs in meta tags
+        const embedMetaMatch = html.match(/<meta[^>]*(?:property|name)=["']embed_url["'][^>]*content=["']([^"']+)["'][^>]*>/i);
+        if (embedMetaMatch) {
+          embedUrl = embedMetaMatch[1];
+        }
+        
+        // Look for Odysee-specific embed patterns in HTML
+        const embedPatterns = [
+          /embed_url["']?\s*:\s*["']([^"']+)["']/i,
+          /embedUrl["']?\s*:\s*["']([^"']+)["']/i,
+          /iframe_url["']?\s*:\s*["']([^"']+)["']/i,
+          /player_url["']?\s*:\s*["']([^"']+)["']/i,
+          /odysee\.com\/\$\/embed\/([^"']+)/i, // Odysee embed pattern
+          /odysee\.com\/@[^\/]+\/([^:]+)/i    // Odysee video pattern
+        ];
+        
+        for (const pattern of embedPatterns) {
+          const match = html.match(pattern);
+          if (match) {
+            // If it's a relative path, construct the full embed URL
+            if (match[1].startsWith('/')) {
+              embedUrl = `https://odysee.com${match[1]}`;
+            } else if (!match[1].startsWith('http')) {
+              embedUrl = `https://odysee.com/embed/${match[1]}`;
+            } else {
+              embedUrl = match[1];
+            }
+            break;
+          }
+        }
+        
+        // If no embed URL found in HTML, construct one from the video ID
+        if (!embedUrl) {
+          const videoId = extractOdyseeVideoId(url);
+          if (videoId) {
+            embedUrl = `https://odysee.com/embed/${videoId}`;
+          }
+        }
+        
+        console.log('🔗 Odysee embed URL search in HTML:', {
+          iframeMatch: iframeMatch ? iframeMatch[1] : null,
+          embedMetaMatch: embedMetaMatch ? embedMetaMatch[1] : null,
+          finalEmbedUrl: embedUrl
+        });
+        
+        const scrapeResult = {
+          url: url,
+          title: title || 'Odysee Video',
+          description: description || 'Watch this video on Odysee',
+          imageUrl: imageUrl,
+          domain: urlObj.hostname,
+          faviconUrl: 'https://odysee.com/favicon.ico',
+          isVideo: true,
+          author: channel,
+          site: channel,
+          platform: 'odysee',
+          embedUrl: embedUrl
+        };
+        
+        console.log('✅ Using scraped data:', JSON.stringify(scrapeResult, null, 2));
+        console.log('🔗 Odysee embed URL found:', embedUrl);
+        
+        // Cache the result
+        odyseeCache.set(url, {
+          data: scrapeResult,
+          timestamp: Date.now()
+        });
+        
+        return scrapeResult;
+      }
+    } catch (scrapeError) {
+      console.log('⚠️ Direct scraping failed:', scrapeError);
+    }
+
+    // Strategy 2: URL-based fallback
+    console.log('🔄 Strategy 2: Using URL-based fallback');
+    const urlObj = new URL(url);
+    const videoId = extractOdyseeVideoId(url);
+    const channelMatch = urlObj.pathname.match(/@([^\/]+)/);
+    const channel = channelMatch ? channelMatch[1] : '';
+    
+    // Construct embed URL from video ID
+    let embedUrl = null;
+    if (videoId) {
+      embedUrl = `https://odysee.com/embed/${videoId}`;
+    }
+    
+    const fallbackData = {
+      url: url,
+      title: `Odysee Video ${videoId ? `(${videoId})` : ''}`,
+      description: 'Watch this video on Odysee',
+      imageUrl: null,
+      domain: urlObj.hostname,
+      faviconUrl: 'https://odysee.com/favicon.ico',
+      isVideo: true,
+      author: channel,
+      site: channel,
+      platform: 'odysee',
+      embedUrl: embedUrl
+    };
+    
+    console.log('✅ Using URL fallback data:', JSON.stringify(fallbackData, null, 2));
+    
+    // Cache the result
+    odyseeCache.set(url, {
+      data: fallbackData,
+      timestamp: Date.now()
+    });
+    
+    return fallbackData;
+
+  } catch (error) {
+    console.error('❌ All Odysee strategies failed:', error);
+    return null;
+  }
 }
 
 // Fetch X (Twitter) embed data - NEW APPROACH
@@ -604,6 +1146,11 @@ async function fetchXEmbed(url: string): Promise<any> {
     try {
       console.log('🔄 Strategy 2: Trying X oEmbed API');
       const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true&hide_thread=true`;
+      console.log('🐦 X oEmbed URL:', oembedUrl);
+      console.log('🐦 X oEmbed fetch headers:', {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+      });
       
       const oembedResponse = await fetch(oembedUrl, {
         headers: {
@@ -612,6 +1159,10 @@ async function fetchXEmbed(url: string): Promise<any> {
         },
         signal: AbortSignal.timeout(10000),
       });
+      
+      console.log('🐦 X oEmbed response status:', oembedResponse.status);
+      console.log('🐦 X oEmbed response headers:', Object.fromEntries(oembedResponse.headers.entries()));
+      console.log('🐦 X oEmbed response ok:', oembedResponse.ok);
       
       if (oembedResponse.ok) {
         const oembedData = await oembedResponse.json();
@@ -652,6 +1203,15 @@ async function fetchXEmbed(url: string): Promise<any> {
     // Strategy 3: Try direct HTML scraping with different User-Agent
     try {
       console.log('🔄 Strategy 3: Trying direct HTML scraping');
+      console.log('🐦 X fetch headers:', {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+      });
       
       const response = await fetch(url, {
         headers: {
@@ -665,6 +1225,10 @@ async function fetchXEmbed(url: string): Promise<any> {
         },
         signal: AbortSignal.timeout(15000),
       });
+
+      console.log('🐦 X fetch response status:', response.status);
+      console.log('🐦 X fetch response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('🐦 X fetch response ok:', response.ok);
 
       if (response.ok) {
         const html = await response.text();
@@ -767,6 +1331,10 @@ async function fetchTelegramPost(url: string): Promise<any> {
 
     // For now, we'll just fetch the page and extract metadata
     // In the future, you could integrate with Telegram Bot API if you have a bot
+    console.log('📱 Telegram fetch headers:', {
+      'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
+    });
+    
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
@@ -774,7 +1342,14 @@ async function fetchTelegramPost(url: string): Promise<any> {
       signal: AbortSignal.timeout(10000),
     });
 
+    console.log('📱 Telegram fetch response status:', response.status);
+    console.log('📱 Telegram fetch response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('📱 Telegram fetch response ok:', response.ok);
+
     if (!response.ok) {
+      console.error('❌ Telegram fetch failed with status:', response.status);
+      const errorText = await response.text();
+      console.error('❌ Telegram fetch error response body:', errorText.substring(0, 500));
       throw new Error(`Telegram fetch error: ${response.status}`);
     }
 
@@ -991,6 +1566,122 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Rumble handling
+    if (domain.includes('rumble.com')) {
+      console.log('🎬 Detected Rumble URL:', url);
+      console.log('🎬 Domain:', domain);
+      
+      platformData = await fetchRumbleEmbed(url);
+      console.log('🎬 Rumble preview fetch result:', platformData ? 'SUCCESS' : 'FAILED');
+      
+      if (platformData) {
+        console.log('🎬 Processing Rumble platform data:', JSON.stringify(platformData, null, 2));
+        
+        // Build author display name
+        const authorDisplay = platformData.author || platformData.site || '';
+        const title = authorDisplay ? `${authorDisplay}: ${platformData.title || ''}` : platformData.title || '';
+        
+        // Rumble is always a video platform
+        const isRumbleVideo = true;
+        // Use the embed URL from Rumble's data, not generate our own
+        const embedUrl = platformData.embedUrl;
+        
+        console.log('🎬 Rumble video detection analysis:', {
+          url,
+          isRumbleVideo,
+          hasEmbedUrl: Boolean(embedUrl),
+          embedUrlFromRumble: platformData.embedUrl,
+          embedUrlFromGetEmbedUrl: getEmbedUrl(url)
+        });
+        
+        const previewData = {
+          url: url,
+          title: title,
+          description: platformData.description || '',
+          imageUrl: platformData.imageUrl || null,
+          domain: urlObj.hostname,
+          faviconUrl: platformData.faviconUrl || null,
+          cachedAt: new Date().toISOString(),
+          isVideo: isRumbleVideo,
+          embedUrl: embedUrl,
+          platform: 'rumble',
+          // Additional Rumble-specific data
+          author: platformData.author,
+          site: platformData.site
+        };
+
+        console.log('🎬 Final Rumble preview data:', JSON.stringify(previewData, null, 2));
+
+        // Cache the result
+        linkPreviewCache.set(url, {
+          data: previewData,
+          timestamp: Date.now()
+        });
+
+        return NextResponse.json(previewData);
+      } else {
+        console.log('🎬 Rumble preview fetch failed, falling back to generic handling');
+      }
+    }
+
+    // Odysee handling
+    if (domain.includes('odysee.com')) {
+      console.log('🔗 Detected Odysee URL:', url);
+      console.log('🔗 Domain:', domain);
+      
+      platformData = await fetchOdyseeEmbed(url);
+      console.log('🔗 Odysee preview fetch result:', platformData ? 'SUCCESS' : 'FAILED');
+      
+      if (platformData) {
+        console.log('🔗 Processing Odysee platform data:', JSON.stringify(platformData, null, 2));
+        
+        // Build author display name
+        const authorDisplay = platformData.author || platformData.site || '';
+        const title = authorDisplay ? `${authorDisplay}: ${platformData.title || ''}` : platformData.title || '';
+        
+        // Odysee is always a video platform
+        const isOdyseeVideo = true;
+        // Use the embed URL from Odysee's data, not generate our own
+        const embedUrl = platformData.embedUrl || getEmbedUrl(url);
+        
+        console.log('🔗 Odysee video detection analysis:', {
+          url,
+          isOdyseeVideo,
+          hasEmbedUrl: Boolean(embedUrl),
+          embedUrlFromOdysee: platformData.embedUrl,
+          embedUrlFromGetEmbedUrl: getEmbedUrl(url)
+        });
+        
+        const previewData = {
+          url: url,
+          title: title,
+          description: platformData.description || '',
+          imageUrl: platformData.imageUrl || null,
+          domain: urlObj.hostname,
+          faviconUrl: platformData.faviconUrl || null,
+          cachedAt: new Date().toISOString(),
+          isVideo: isOdyseeVideo,
+          embedUrl: embedUrl,
+          platform: 'odysee',
+          // Additional Odysee-specific data
+          author: platformData.author,
+          site: platformData.site
+        };
+
+        console.log('🔗 Final Odysee preview data:', JSON.stringify(previewData, null, 2));
+
+        // Cache the result
+        linkPreviewCache.set(url, {
+          data: previewData,
+          timestamp: Date.now()
+        });
+
+        return NextResponse.json(previewData);
+      } else {
+        console.log('🔗 Odysee preview fetch failed, falling back to generic handling');
+      }
+    }
+
     // Telegram handling
     if (domain.includes('t.me')) {
       platformData = await fetchTelegramPost(url);
@@ -1019,18 +1710,38 @@ export async function POST(request: NextRequest) {
     }
 
     // Generic URL handling
+    console.log('🌐 Starting generic URL fetch for:', url);
+    console.log('🌐 Fetch headers:', {
+      'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5'
+    });
+    
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
       },
       signal: AbortSignal.timeout(10000), // 10 second timeout
     });
 
+    console.log('🌐 Fetch response status:', response.status);
+    console.log('🌐 Fetch response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('🌐 Fetch response ok:', response.ok);
+
     if (!response.ok) {
+      console.error('❌ Fetch failed with status:', response.status);
+      const errorText = await response.text();
+      console.error('❌ Fetch error response body:', errorText.substring(0, 500));
       return NextResponse.json({ error: 'Failed to fetch URL' }, { status: 500 });
     }
 
     const html = await response.text();
+    console.log('🌐 HTML response length:', html.length);
+    console.log('🌐 HTML response preview (first 500 chars):', html.substring(0, 500));
+    console.log('🌐 HTML response preview (last 500 chars):', html.substring(Math.max(0, html.length - 500)));
+    
     const metaData = extractMetaTags(html);
 
     console.log('Extracted metadata:', metaData);
