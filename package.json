@@ -13,6 +13,7 @@
     "seed-categories": "ts-node scripts/seed-categories.ts",
     "remove-subcategories": "ts-node scripts/remove-subcategories.ts",
     "seed-subcategories": "ts-node scripts/seed-subcategories.ts",
+    "seed-categories-from-json": "ts-node scripts/seed-categories-from-json.ts",
     "create-search-index": "ts-node --project scripts/tsconfig.json scripts/create-search-index.ts"
   },
   "dependencies": {

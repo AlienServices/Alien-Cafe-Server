@@ -255,6 +255,12 @@ function extractYouTubeVideoId(url: string): string | null {
     
     // Handle youtube.com URLs
     if (domain.includes('youtube.com')) {
+      // YouTube Shorts URLs: https://www.youtube.com/shorts/{videoId}
+      if (urlObj.pathname.includes('/shorts/')) {
+        const shortsMatch = urlObj.pathname.match(/\/shorts\/([^\/\?]+)/);
+        return shortsMatch ? shortsMatch[1] : null;
+      }
+      
       // Standard watch URLs
       if (urlObj.pathname.includes('/watch')) {
         return urlObj.searchParams.get('v');
@@ -514,17 +520,19 @@ function getEmbedUrl(url: string): string | null {
       return null; // Let the frontend handle embed URL from server response
     }
     
-    // Odysee - construct proper embed URL
+    // Odysee - construct proper embed URL (but note: Odysee blocks iframe embedding)
     if (domain.includes('odysee.com')) {
       const videoId = extractOdyseeVideoId(url);
       if (videoId) {
         console.log('🎥 Odysee video ID extracted:', videoId);
-        const embedUrl = `https://odysee.com/embed/${videoId}`;
-        console.log('Generated Odysee embed URL:', embedUrl);
-        return embedUrl;
+        // Note: Odysee blocks iframe embedding with x-frame-options: DENY
+        // The frontend will use a custom player component instead
+        const embedUrl = `https://odysee.com/$/embed/@${videoId}`;
+        console.log('Generated Odysee embed URL (for reference):', embedUrl);
+        return null; // Return null to indicate no iframe should be used
       }
-      console.log('🎥 Using original Odysee URL for iframe:', url);
-      return url;
+      console.log('🎥 No Odysee embed URL generated - will use custom player');
+      return null;
     }
     
     return null;
