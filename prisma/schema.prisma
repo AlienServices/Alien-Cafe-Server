@@ -51,6 +51,7 @@ model User {
   following String[]
   friends   String[]   @default([])
   blurhash  String?
+  isAdmin   Boolean    @default(false)
   comments  Comment[]
   bookmarks Bookmark[]
   posts     Post[]
