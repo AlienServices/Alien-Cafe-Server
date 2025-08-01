@@ -47,7 +47,12 @@ export async function GET(req: NextRequest) {
                         subcategories: true
                     }
                 },
-                linkPreviews: true
+                linkPreviews: true,
+                media: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
             },
             orderBy: { date: 'desc' },
             skip,

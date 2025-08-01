@@ -167,6 +167,7 @@ model Draft {
   updatedAt     DateTime @updatedAt
   owner         User     @relation("UserDrafts", fields: [ownerId], references: [id], onDelete: Cascade)
   collaborators DraftCollaborator[]
+  media         DraftMedia[]
 }
 
 model DraftCollaborator {
@@ -176,6 +177,24 @@ model DraftCollaborator {
   draft    Draft    @relation(fields: [draftId], references: [id])
   draftId  String
   createdAt DateTime @default(now())
+}
+
+model DraftMedia {
+  id          String   @id @default(cuid())
+  draftId     String
+  filename    String
+  originalName String
+  fileSize    Int
+  mimeType    String
+  storagePath String   // Supabase storage path
+  thumbnailPath String? // Generated thumbnail path
+  isVideo     Boolean  @default(false)
+  processingStatus String @default("completed") // pending, processing, completed, failed
+  uploadDate  DateTime @default(now())
+  order       Int      @default(0) // For ordering media in gallery
+  draft       Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@map("draft_media")
 }
 
 model DeviceToken {

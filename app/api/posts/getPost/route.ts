@@ -19,7 +19,12 @@ export async function GET(req: NextRequest) {
                     }
                 },
                 owner: true,
-                linkPreviews: true
+                linkPreviews: true,
+                media: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
             }
         });
 

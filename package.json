@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.45.4",
     "@types/sharp": "^0.31.1",
     "blurhash": "^2.0.5",
+    "dotenv": "^17.2.1",
     "firebase-admin": "^13.4.0",
     "jsonwebtoken": "^9.0.2",
     "next": "^14.2.2",

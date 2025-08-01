@@ -16,7 +16,12 @@ export async function GET(req: NextRequest) {
             },
             include: {
                 categories: true,
-                linkPreviews: true
+                linkPreviews: true,
+                media: {
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
             },
             take: limit,
             skip: offset

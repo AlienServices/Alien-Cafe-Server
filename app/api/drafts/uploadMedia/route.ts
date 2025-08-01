@@ -6,25 +6,35 @@ import sharp from "sharp";
 const prisma = new PrismaClient();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase URL or Anon Key in environment variables.");
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error("Missing Supabase URL or Service Role Key in environment variables.");
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 export async function POST(req: NextRequest) {
-  console.log("Uploading media");
+  console.log("Uploading draft media");
   try {
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
-    const postId = formData.get('postId') as string;
+    const draftId = formData.get('draftId') as string;
     const userId = formData.get('userId') as string;
 
-    if (!postId || !userId) {
+    console.log("Received data:", { draftId, userId, filesCount: files.length });
+    console.log("Files details:", files.map(f => ({ name: f.name, size: f.size, type: f.type })));
+    console.log("FormData keys:", Array.from(formData.keys()));
+
+    if (!draftId || !userId) {
+      console.error("Missing draftId or userId:", { draftId, userId });
       return NextResponse.json(
-        { error: "Missing postId or userId" },
+        { error: "Missing draftId or userId" },
         { status: 400 }
       );
     }
@@ -36,14 +46,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if post exists and user owns it
-    const post = await prisma.post.findFirst({
-      where: { id: postId, userId: userId }
+    // Check if draft exists and user owns it
+    console.log("Looking for draft:", { draftId, userId });
+    const draft = await prisma.draft.findFirst({
+      where: { id: draftId, ownerId: userId }
     });
 
-    if (!post) {
+    console.log("Draft lookup result:", draft);
+
+    if (!draft) {
+      console.error("Draft not found or unauthorized:", { draftId, userId });
       return NextResponse.json(
-        { error: "Post not found or unauthorized" },
+        { error: "Draft not found or unauthorized" },
         { status: 404 }
       );
     }
@@ -53,7 +67,7 @@ export async function POST(req: NextRequest) {
 
     for (const file of files) {
       // Validate file type
-      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       const allowedVideoTypes = ['video/mp4', 'video/mov', 'video/avi', 'video/wmv', 'video/webm'];
       const isImage = allowedImageTypes.includes(file.type);
       const isVideo = allowedVideoTypes.includes(file.type);
@@ -78,15 +92,17 @@ export async function POST(req: NextRequest) {
       const fileExtension = file.name.split('.').pop();
       const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const filename = `${uniqueId}.${fileExtension}`;
-      const storagePath = `postmedia/${postId}/${filename}`;
+      const storagePath = `draftmedia/${draftId}/${filename}`;
 
       // Upload to Supabase Storage
+      console.log("Attempting upload to postmedia bucket:", { storagePath, fileSize: file.size, fileType: file.type });
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("postmedia")
         .upload(storagePath, file, {
           contentType: file.type,
           metadata: {
-            postId,
+            draftId,
             userId,
             originalName: file.name,
             fileSize: file.size.toString()
@@ -100,6 +116,14 @@ export async function POST(req: NextRequest) {
           { status: 500 }
         );
       }
+
+      console.log("Upload successful:", { storagePath, uploadData });
+      
+      // Log the public URL for verification
+      const { data: publicUrl } = supabase.storage
+        .from("postmedia")
+        .getPublicUrl(storagePath);
+      console.log("Public URL:", publicUrl.publicUrl);
 
       let thumbnailPath = null;
 
@@ -115,14 +139,14 @@ export async function POST(req: NextRequest) {
             .toBuffer();
 
           const thumbnailFilename = `thumb-${uniqueId}.jpg`;
-          const thumbnailStoragePath = `postmedia/${postId}/thumbnails/${thumbnailFilename}`;
+          const thumbnailStoragePath = `draftmedia/${draftId}/thumbnails/${thumbnailFilename}`;
 
           const { error: thumbnailError } = await supabase.storage
             .from("postmedia")
             .upload(thumbnailStoragePath, thumbnailBuffer, {
               contentType: 'image/jpeg',
               metadata: {
-                postId,
+                draftId,
                 userId,
                 isThumbnail: 'true'
               }
@@ -138,9 +162,21 @@ export async function POST(req: NextRequest) {
       }
 
       // Store metadata in database
-      const mediaRecord = await prisma.postMedia.create({
+      console.log("Creating draft media record:", {
+        draftId,
+        filename: uniqueId,
+        originalName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        storagePath,
+        thumbnailPath,
+        isVideo: isVideo,
+        order: order
+      });
+      
+      const mediaRecord = await prisma.draftMedia.create({
         data: {
-          postId,
+          draftId,
           filename: uniqueId,
           originalName: file.name,
           fileSize: file.size,
@@ -152,6 +188,8 @@ export async function POST(req: NextRequest) {
           processingStatus: 'completed'
         }
       });
+      
+      console.log("Draft media record created:", mediaRecord);
 
       uploadedMedia.push({
         id: mediaRecord.id,
@@ -171,7 +209,12 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Media upload error:", error);
+    console.error("Draft media upload error:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Unknown'
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

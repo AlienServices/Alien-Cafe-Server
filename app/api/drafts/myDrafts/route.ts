@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
         include: {
           owner: { select: { id: true, username: true } },
           collaborators: { include: { user: { select: { id: true, username: true } } } },
+          media: {
+            orderBy: { order: 'asc' }
+          },
         },
       });
       if (!draft) {

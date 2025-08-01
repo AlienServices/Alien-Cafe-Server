@@ -77,7 +77,7 @@ async function seedSubcategories() {
 
       // Create subcategories for this category
       for (const subName of subcategoryList) {
-        const subcategory = await prisma.subcategory.create({
+        await prisma.subcategory.create({
           data: {
             name: subName,
             categoryId: category.id
