@@ -5,23 +5,28 @@ import sharp from "sharp";
 
 const prisma = new PrismaClient();
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("Missing Supabase URL or Service Role Key in environment variables.");
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null;
   }
-});
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
 
 export async function POST(req: NextRequest) {
   console.log("Uploading media");
   try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Server configuration missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+
     const formData = await req.formData();
     const files = formData.getAll('files') as File[];
     const postId = formData.get('postId') as string;

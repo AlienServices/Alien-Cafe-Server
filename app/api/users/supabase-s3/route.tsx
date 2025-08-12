@@ -5,19 +5,27 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient()
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase URL or Anon Key in environment variables.");
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 import { NextResponse, NextRequest } from "next/server";
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Server configuration missing Supabase URL or Anon Key' },
+        { status: 500 }
+      );
+    }
+
     const id = req.nextUrl.searchParams.get("id");
     const requestData = await req.formData();
     const file = requestData.get("image");

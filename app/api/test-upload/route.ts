@@ -1,17 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, NextRequest } from 'next/server';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase URL or Anon Key in environment variables.");
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey);
 }
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Server configuration missing Supabase URL or Anon Key' },
+        { status: 500 }
+      );
+    }
+    
     console.log("Testing upload...");
     
     // Test 1: List buckets

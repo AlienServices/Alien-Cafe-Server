@@ -4,22 +4,27 @@ import { createClient } from "@supabase/supabase-js";
 
 const prisma = new PrismaClient();
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("Missing Supabase URL or Service Role Key in environment variables.");
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+function getSupabase() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseServiceKey) {
+    return null;
   }
-});
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
 
 export async function DELETE(req: NextRequest) {
   try {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: 'Server configuration missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+
     const { draftId, userId } = await req.json();
     if (!draftId || !userId) {
       return NextResponse.json({ error: 'Missing draftId or userId' }, { status: 400 });

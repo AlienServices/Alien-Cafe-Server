@@ -1,11 +1,17 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const prisma = new PrismaClient();
 
 // Helper function for fallback file migration
-async function fallbackFileMigration(mediaFile: any, newPath: string, postId: string, userId: string) {
+async function fallbackFileMigration(
+  mediaFile: any,
+  newPath: string,
+  postId: string,
+  userId: string,
+  supabase: SupabaseClient
+) {
   try {
     console.log('Using fallback migration for file:', mediaFile.originalName);
     
@@ -45,22 +51,24 @@ async function fallbackFileMigration(mediaFile: any, newPath: string, postId: st
   }
 }
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error("Missing Supabase URL or Service Role Key in environment variables.");
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-});
-
 export async function POST(req: NextRequest) {
   try {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json(
+        { error: 'Server configuration missing Supabase URL or Service Role Key' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
     const body = await req.json();
     const { 
       draftId, 
@@ -179,7 +187,7 @@ export async function POST(req: NextRequest) {
               if (copyError) {
                 console.error('Error copying file:', copyError);
                 // Fallback to download/upload if copy fails
-                await fallbackFileMigration(mediaFile, newPath, post.id, userId);
+                await fallbackFileMigration(mediaFile, newPath, post.id, userId, supabase);
               } else {
                 console.log('File copied successfully to new location');
                 
@@ -194,7 +202,7 @@ export async function POST(req: NextRequest) {
               }
             } catch (error) {
               console.error('Error during file copy, falling back to download/upload:', error);
-              await fallbackFileMigration(mediaFile, newPath, post.id, userId);
+              await fallbackFileMigration(mediaFile, newPath, post.id, userId, supabase);
             }
 
             // Handle thumbnail migration
