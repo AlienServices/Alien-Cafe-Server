@@ -22,7 +22,8 @@ export async function POST(req: Request) {
             linksCount: data.links?.length,
             primaryLinksCount: data.primaryLinks?.length,
             tagsCount: data.tags?.length,
-            linkPreviewsCount: data.linkPreviews?.length || 0
+            linkPreviewsCount: data.linkPreviews?.length || 0,
+            mediaFilesCount: data.mediaFiles?.length || 0
         })
 
         const post = await prisma.post.create({
@@ -77,6 +78,15 @@ export async function POST(req: Request) {
         console.log('Connected subcategories:', Array.isArray(post.subcategories) ? post.subcategories.map((s: any) => s.name) : [])
         console.log('Owner:', post.owner?.username)
         console.log('Link previews created:', post.linkPreviews?.length || 0)
+
+        // Media files are now handled by the frontend via uploadPostMedia
+        // No need to create database records here as they will be created during upload
+        if (data.mediaFiles && Array.isArray(data.mediaFiles) && data.mediaFiles.length > 0) {
+            console.log('=== MEDIA FILES DETECTED ===')
+            console.log('Media files count:', data.mediaFiles.length)
+            console.log('Media files will be handled by frontend uploadPostMedia function')
+            console.log('=== MEDIA FILES HANDLING SKIPPED ===')
+        }
 
         // Extract URLs from content and generate link previews
         console.log('=== EXTRACTING URLs AND GENERATING LINK PREVIEWS ===')

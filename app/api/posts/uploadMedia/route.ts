@@ -6,13 +6,18 @@ import sharp from "sharp";
 const prisma = new PrismaClient();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Missing Supabase URL or Anon Key in environment variables.");
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error("Missing Supabase URL or Service Role Key in environment variables.");
 }
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 export async function POST(req: NextRequest) {
   console.log("Uploading media");
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     for (const file of files) {
       // Validate file type
-      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
       const allowedVideoTypes = ['video/mp4', 'video/mov', 'video/avi', 'video/wmv', 'video/webm'];
       const isImage = allowedImageTypes.includes(file.type);
       const isVideo = allowedVideoTypes.includes(file.type);
