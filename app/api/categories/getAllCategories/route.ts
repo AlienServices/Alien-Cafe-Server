@@ -39,8 +39,16 @@ export async function GET(req: NextRequest) {
     
     console.log(`Full query found ${fullCategories.length} categories`)
     
+    // Ensure subcategories are ordered case-insensitively by name
+    const sortedCategories = fullCategories.map((category) => ({
+      ...category,
+      subcategories: (category.subcategories || []).slice().sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+    }))
+    
     // Create response with proper headers
-    const response = NextResponse.json(fullCategories)
+    const response = NextResponse.json(sortedCategories)
     
     // Add cache control headers to prevent caching issues
     response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')

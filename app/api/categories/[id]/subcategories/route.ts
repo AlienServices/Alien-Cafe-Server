@@ -40,10 +40,17 @@ export async function GET(
             posts: true
           }
         }
+      },
+      orderBy: {
+        name: 'asc'
       }
     })
 
-    return NextResponse.json(subcategories)
+    // Ensure case-insensitive ordering in response
+    const sorted = subcategories.slice().sort((a: any, b: any) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+    )
+    return NextResponse.json(sorted)
   } catch (error) {
     console.error('Error fetching subcategories:', error)
     return NextResponse.json(

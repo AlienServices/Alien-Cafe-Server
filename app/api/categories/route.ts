@@ -44,7 +44,14 @@ export async function GET() {
     })
 
     console.log(`[DEBUG] Successfully fetched ${categories.length} categories`)
-    return NextResponse.json(categories)
+    // Ensure subcategories are ordered case-insensitively by name
+    const sortedCategories = categories.map((category) => ({
+      ...category,
+      subcategories: (category.subcategories || []).slice().sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+      )
+    }))
+    return NextResponse.json(sortedCategories)
   } catch (error) {
     console.error('[DEBUG] Error fetching categories:', error)
     return NextResponse.json(
