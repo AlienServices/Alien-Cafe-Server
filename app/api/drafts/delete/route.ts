@@ -30,63 +30,88 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Missing draftId or userId' }, { status: 400 });
     }
     
-    // Check if user is owner and get draft with media
-    const draft = await prisma.draft.findFirst({
+    // First check if user is the owner
+    const draftAsOwner = await prisma.draft.findFirst({
       where: { id: draftId, ownerId: userId },
       include: { media: true }
     });
     
-    if (!draft) {
-      return NextResponse.json({ error: 'Draft not found or unauthorized' }, { status: 404 });
-    }
+    if (draftAsOwner) {
+      // User is the owner - delete entire draft
+      console.log('User is owner, deleting entire draft with media:', { mediaCount: draftAsOwner.media.length });
 
-    console.log('Deleting draft with media:', { mediaCount: draft.media.length });
-
-    // Delete media files from Supabase storage
-    if (draft.media.length > 0) {
-      for (const media of draft.media) {
-        try {
-          // Delete main file
-          const { error: fileError } = await supabase.storage
-            .from('postmedia')
-            .remove([media.storagePath]);
-
-          if (fileError) {
-            console.error('Error deleting file:', fileError);
-          }
-
-          // Delete thumbnail if it exists
-          if (media.thumbnailPath) {
-            const { error: thumbnailError } = await supabase.storage
+      // Delete media files from Supabase storage
+      if (draftAsOwner.media.length > 0) {
+        for (const media of draftAsOwner.media) {
+          try {
+            // Delete main file
+            const { error: fileError } = await supabase.storage
               .from('postmedia')
-              .remove([media.thumbnailPath]);
+              .remove([media.storagePath]);
 
-            if (thumbnailError) {
-              console.error('Error deleting thumbnail:', thumbnailError);
+            if (fileError) {
+              console.error('Error deleting file:', fileError);
             }
+
+            // Delete thumbnail if it exists
+            if (media.thumbnailPath) {
+              const { error: thumbnailError } = await supabase.storage
+                .from('postmedia')
+                .remove([media.thumbnailPath]);
+
+              if (thumbnailError) {
+                console.error('Error deleting thumbnail:', thumbnailError);
+              }
+            }
+          } catch (error) {
+            console.error('Error deleting media file:', error);
           }
-        } catch (error) {
-          console.error('Error deleting media file:', error);
         }
       }
+
+      // Delete collaborators first
+      await prisma.draftCollaborator.deleteMany({
+        where: { draftId },
+      });
+
+      // Delete media records
+      await prisma.draftMedia.deleteMany({
+        where: { draftId }
+      });
+
+      // Delete the draft
+      await prisma.draft.delete({ where: { id: draftId } });
+      
+      return NextResponse.json({ message: 'Draft deleted', action: 'deleted' });
     }
-
-    // Delete collaborators first
-    await prisma.draftCollaborator.deleteMany({
-      where: { draftId },
-    });
-
-    // Delete media records
-    await prisma.draftMedia.deleteMany({
-      where: { draftId }
-    });
-
-    // Delete the draft
-    await prisma.draft.delete({ where: { id: draftId } });
     
-    return NextResponse.json({ message: 'Draft deleted' });
+    // User is not owner - check if they are a collaborator
+    const draftAsCollaborator = await prisma.draft.findFirst({
+      where: { 
+        id: draftId,
+        collaborators: { some: { userId } }
+      }
+    });
+    
+    if (draftAsCollaborator) {
+      // User is a collaborator - remove them as collaborator only
+      console.log('User is collaborator, removing from draft:', { draftId, userId });
+      
+      await prisma.draftCollaborator.deleteMany({
+        where: { 
+          draftId,
+          userId 
+        },
+      });
+      
+      return NextResponse.json({ message: 'Removed from draft', action: 'removed' });
+    }
+    
+    // User is neither owner nor collaborator
+    return NextResponse.json({ error: 'Draft not found or unauthorized' }, { status: 404 });
+    
   } catch (error) {
-    console.error('Error deleting draft:', error);
-    return NextResponse.json({ error: 'Failed to delete draft' }, { status: 500 });
+    console.error('Error processing draft action:', error);
+    return NextResponse.json({ error: 'Failed to process draft action' }, { status: 500 });
   }
 } 
