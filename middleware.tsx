@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
 
 export function middleware(req: any) {
+  // Enhanced auth header debugging
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) {
+    if (authHeader.startsWith("Bearer ")) {
+      const token = authHeader.substring(7);
+    }
+  }
+
   const origin = req.headers.get("origin");
+  
+  // CORS logic commented out to eliminate blocking
   const allowedOrigins = [
     "*",
     "http://10.1.10.231:3000",
@@ -19,13 +29,14 @@ export function middleware(req: any) {
   ];
 
   const response = NextResponse.next();
-
-  if (allowedOrigins.includes(origin)) {
+  // Re-enable CORS logic with proper Authorization header support
+  if (origin && allowedOrigins.includes(origin)) {
+    response.headers.set("Access-Control-Allow-Origin", origin);
+  } else if (origin && origin.includes("10.1.10.")) {
     response.headers.set("Access-Control-Allow-Origin", origin);
   } else {
     response.headers.set("Access-Control-Allow-Origin", "*");
   }
-
   response.headers.set("Access-Control-Allow-Credentials", "true");
   response.headers.set(
     "Access-Control-Allow-Methods",
@@ -33,7 +44,7 @@ export function middleware(req: any) {
   );
   response.headers.set(
     "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-user-email",
+    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, x-user-email, Authorization",
   );
 
   // Allow iframe embedding for video content
@@ -58,10 +69,11 @@ export function middleware(req: any) {
   
   response.headers.set("Content-Security-Policy", csp);
 
+  // Re-enable OPTIONS preflight handling
   if (req.method === "OPTIONS") {
     return new NextResponse(null, { status: 204, headers: response.headers });
   }
-
+  
   return response;
 }
 
