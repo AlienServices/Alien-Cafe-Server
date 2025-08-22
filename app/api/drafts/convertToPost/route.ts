@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import MarkdownIt from 'markdown-it';
+import sanitizeHtml from 'sanitize-html';
 
 const prisma = new PrismaClient();
 
@@ -75,6 +77,7 @@ export async function POST(req: NextRequest) {
       userId, 
       title, 
       content, 
+      contentMarkdown,
       primaryLinks, 
       links, 
       tags, 
@@ -84,7 +87,7 @@ export async function POST(req: NextRequest) {
       mediaFiles
     } = body;
 
-    if (!draftId || !userId || !title || !content) {
+    if (!draftId || !userId || !title || (!content && !contentMarkdown)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -103,11 +106,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Draft not found or unauthorized' }, { status: 404 });
     }
 
+    // Markdown → HTML → Text pipeline
+    const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
+    const ALLOWED_TAGS = [
+      'p', 'br', 'a', 'strong', 'b', 'em', 'i', 'u', 'img', 'video', 'source'
+    ];
+    const ALLOWED_ATTR = {
+      a: ['href', 'target', 'rel'],
+      img: ['src', 'alt'],
+      video: ['src', 'controls'],
+      source: ['src', 'type']
+    } as Record<string, string[]>;
+
+    const htmlFromMarkdown = contentMarkdown ? md.render(contentMarkdown) : undefined;
+    const rawHtml = htmlFromMarkdown ?? content ?? '';
+    const sanitizedHtml = sanitizeHtml(rawHtml, {
+      allowedTags: ALLOWED_TAGS,
+      allowedAttributes: ALLOWED_ATTR,
+      transformTags: {
+        a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer', target: '_blank' })
+      }
+    });
+    const textOnly = sanitizeHtml(sanitizedHtml, { allowedTags: [], allowedAttributes: {} }).trim();
+
     // Create the post
     const post = await prisma.post.create({
       data: {
         thesis: title,
-        content: content,
+        content: sanitizedHtml, // legacy compatibility
+        contentMarkdown: contentMarkdown ?? null,
+        contentHtml: sanitizedHtml,
+        contentText: textOnly,
         primaryLinks: primaryLinks,
         links: links,
         tags: tags,

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
+import MarkdownIt from 'markdown-it';
+import sanitizeHtml from 'sanitize-html';
 
 const prisma = new PrismaClient();
 
@@ -37,15 +39,42 @@ try {
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    const { title, content, links, primaryLinks, ownerId, collaborators, categories, subcategories, tags } = data;
-    if (!ownerId || !title || !content) {
+    const { title, content, contentMarkdown, links, primaryLinks, ownerId, collaborators, categories, subcategories, tags, linkPreviews } = data;
+    if (!ownerId || !title || (!content && !contentMarkdown)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Prepare Markdown → HTML → Text pipeline (supports inline HTML for videos)
+    const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
+    const ALLOWED_TAGS = [
+      'p', 'br', 'a', 'strong', 'b', 'em', 'i', 'u', 'img', 'video', 'source'
+    ];
+    const ALLOWED_ATTR = {
+      a: ['href', 'target', 'rel'],
+      img: ['src', 'alt'],
+      video: ['src', 'controls'],
+      source: ['src', 'type']
+    } as Record<string, string[]>;
+
+    const htmlFromMarkdown = contentMarkdown ? md.render(contentMarkdown) : undefined;
+    const rawHtml = htmlFromMarkdown ?? content ?? '';
+    const sanitizedHtml = sanitizeHtml(rawHtml, {
+      allowedTags: ALLOWED_TAGS,
+      allowedAttributes: ALLOWED_ATTR,
+      transformTags: {
+        a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer', target: '_blank' })
+      }
+    });
+    const textOnly = sanitizeHtml(sanitizedHtml, { allowedTags: [], allowedAttributes: {} }).trim();
+    
     // Create the draft without collaborators
     const draft = await prisma.draft.create({
       data: {
         title,
-        content,
+        content: sanitizedHtml, // legacy compatibility
+        contentMarkdown: contentMarkdown ?? null,
+        contentHtml: sanitizedHtml,
+        contentText: textOnly,
         links,
         primaryLinks,
         ownerId,
@@ -57,6 +86,27 @@ export async function POST(req: NextRequest) {
         owner: { select: { id: true, username: true } },
       },
     });
+
+    // Save link previews if provided
+    if (linkPreviews && Array.isArray(linkPreviews) && linkPreviews.length > 0) {
+      await Promise.all(linkPreviews.map(async (preview: any) => {
+        await prisma.draftLinkPreview.create({
+          data: {
+            draftId: draft.id,
+            url: preview.url,
+            title: preview.title,
+            description: preview.description,
+            imageUrl: preview.imageUrl,
+            domain: preview.domain,
+            faviconUrl: preview.faviconUrl,
+            platform: preview.platform,
+            author: preview.author,
+            site: preview.site,
+          },
+        });
+      }));
+    }
+
     // Add collaborators via join table
     if (collaborators && collaborators.length > 0) {
       await Promise.all(collaborators.map(async (userId: string) => {
@@ -100,11 +150,24 @@ export async function POST(req: NextRequest) {
         }));
       }));
     }
+    
     // Fetch collaborators info
     const collaboratorsInfo = collaborators && collaborators.length > 0
       ? await prisma.user.findMany({ where: { id: { in: collaborators } }, select: { id: true, username: true } })
       : [];
-    return NextResponse.json({ draft: { ...draft, collaboratorsInfo } });
+    
+    // Fetch link previews for response
+    const savedLinkPreviews = await prisma.draftLinkPreview.findMany({
+      where: { draftId: draft.id },
+    });
+    
+    return NextResponse.json({ 
+      draft: { 
+        ...draft, 
+        collaboratorsInfo,
+        linkPreviews: savedLinkPreviews 
+      } 
+    });
   } catch (error) {
     console.error('Error creating draft:', error);
     return NextResponse.json({ error: 'Failed to create draft' }, { status: 500 });

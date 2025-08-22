@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
           media: {
             orderBy: { order: 'asc' }
           },
+          linkPreviews: true,
         },
       });
       if (!draft) {
@@ -49,6 +50,7 @@ export async function GET(req: NextRequest) {
       include: {
         owner: { select: { id: true, username: true } },
         collaborators: { include: { user: { select: { id: true, username: true } } } },
+        linkPreviews: true,
       },
     });
     const draftsWithCollaborators = drafts.map(draft => ({

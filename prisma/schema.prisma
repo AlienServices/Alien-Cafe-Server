@@ -10,6 +10,9 @@ datasource db {
 model Post {
   id                String     @id @default(cuid())
   content           String?
+  contentMarkdown   String?
+  contentHtml       String?
+  contentText       String?
   title             String
   email             String?
   thesis            String?
@@ -157,6 +160,9 @@ model Draft {
   id            String   @id @default(cuid())
   title         String
   content       String
+  contentMarkdown String?
+  contentHtml     String?
+  contentText     String?
   links         String?
   primaryLinks  String?
   ownerId       String
@@ -168,6 +174,7 @@ model Draft {
   owner         User     @relation("UserDrafts", fields: [ownerId], references: [id], onDelete: Cascade)
   collaborators DraftCollaborator[]
   media         DraftMedia[]
+  linkPreviews  DraftLinkPreview[]
 }
 
 model DraftCollaborator {
@@ -255,4 +262,23 @@ model LinkPreview {
 
   @@unique([postId, url])
   @@map("link_previews")
+}
+
+model DraftLinkPreview {
+  id          String   @id @default(cuid())
+  draftId     String
+  url         String
+  title       String?
+  description String?
+  imageUrl    String?
+  domain      String?
+  faviconUrl  String?
+  platform    String?  // X/Twitter specific
+  author      String?  // X/Twitter specific
+  site        String?  // X/Twitter specific
+  createdAt   DateTime @default(now())
+  draft       Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, url])
+  @@map("draft_link_previews")
 }

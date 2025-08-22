@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
+import MarkdownIt from 'markdown-it';
+import sanitizeHtml from 'sanitize-html';
 
 const prisma = new PrismaClient();
 
@@ -36,7 +38,7 @@ try {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { draftId, userId, title, content, links, primaryLinks, collaborators, categories, subcategories, tags } = await req.json();
+    const { draftId, userId, title, content, contentMarkdown, links, primaryLinks, collaborators, categories, subcategories, tags, linkPreviews } = await req.json();
     if (!draftId || !userId) {
       return NextResponse.json({ error: 'Missing draftId or userId' }, { status: 400 });
     }
@@ -50,12 +52,38 @@ export async function PUT(req: NextRequest) {
     if (!isOwner && !isCollaborator) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
     }
+    // Prepare Markdown → HTML → Text pipeline
+    const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
+    const ALLOWED_TAGS = [
+      'p', 'br', 'a', 'strong', 'b', 'em', 'i', 'u', 'img', 'video', 'source'
+    ];
+    const ALLOWED_ATTR = {
+      a: ['href', 'target', 'rel'],
+      img: ['src', 'alt'],
+      video: ['src', 'controls'],
+      source: ['src', 'type']
+    } as Record<string, string[]>;
+
+    const htmlFromMarkdown = contentMarkdown ? md.render(contentMarkdown) : undefined;
+    const rawHtml = htmlFromMarkdown ?? content ?? '';
+    const sanitizedHtml = sanitizeHtml(rawHtml, {
+      allowedTags: ALLOWED_TAGS,
+      allowedAttributes: ALLOWED_ATTR,
+      transformTags: {
+        a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer', target: '_blank' })
+      }
+    });
+    const textOnly = sanitizeHtml(sanitizedHtml, { allowedTags: [], allowedAttributes: {} }).trim();
+
     // Update draft fields
     const updatedDraft = await prisma.draft.update({
       where: { id: draftId },
       data: {
         title,
-        content,
+        content: sanitizedHtml, // legacy compatibility
+        contentMarkdown: contentMarkdown ?? null,
+        contentHtml: sanitizedHtml,
+        contentText: textOnly,
         links,
         primaryLinks,
         categories: categories || draft.categories,
@@ -63,6 +91,35 @@ export async function PUT(req: NextRequest) {
         tags: tags || draft.tags,
       },
     });
+
+    // Update link previews if provided
+    if (linkPreviews !== undefined) {
+      // Delete existing link previews
+      await prisma.draftLinkPreview.deleteMany({
+        where: { draftId },
+      });
+      
+      // Create new link previews if any
+      if (Array.isArray(linkPreviews) && linkPreviews.length > 0) {
+        await Promise.all(linkPreviews.map(async (preview: any) => {
+          await prisma.draftLinkPreview.create({
+            data: {
+              draftId,
+              url: preview.url,
+              title: preview.title,
+              description: preview.description,
+              imageUrl: preview.imageUrl,
+              domain: preview.domain,
+              faviconUrl: preview.faviconUrl,
+              platform: preview.platform,
+              author: preview.author,
+              site: preview.site,
+            },
+          });
+        }));
+      }
+    }
+
     // Update collaborators (add/remove)
     if (collaborators) {
       // Get current collaborators
@@ -108,11 +165,24 @@ export async function PUT(req: NextRequest) {
       const toRemove = currentIds.filter(id => !collaborators.includes(id));
       await prisma.draftCollaborator.deleteMany({ where: { draftId, userId: { in: toRemove } } });
     }
+    
     // Fetch collaborators info
     const collaboratorsInfo = collaborators && collaborators.length > 0
       ? await prisma.user.findMany({ where: { id: { in: collaborators } }, select: { id: true, username: true } })
       : [];
-    return NextResponse.json({ draft: { ...updatedDraft, collaboratorsInfo } });
+    
+    // Fetch updated link previews for response
+    const savedLinkPreviews = await prisma.draftLinkPreview.findMany({
+      where: { draftId },
+    });
+    
+    return NextResponse.json({ 
+      draft: { 
+        ...updatedDraft, 
+        collaboratorsInfo,
+        linkPreviews: savedLinkPreviews 
+      } 
+    });
   } catch (error) {
     console.error('Error updating draft:', error);
     return NextResponse.json({ error: 'Failed to update draft' }, { status: 500 });
