@@ -7,8 +7,16 @@ export async function GET(req: NextRequest) {
     const email = req.nextUrl.searchParams.get('email')
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '3', 10);
     const offset = parseInt(req.nextUrl.searchParams.get('offset') || '0', 10);
+    
+    console.log('🔍 [Server] getMyPosts called with:', { email, limit, offset });
+    
+    if (!email) {
+        console.error('❌ [Server] No email provided');
+        return NextResponse.json({ error: 'Email parameter is required' }, { status: 400 });
+    }
+    
     try {
-        const test = await prisma.post.findMany({
+        const posts = await prisma.post.findMany({
             where: {
                 email
             },
@@ -26,9 +34,12 @@ export async function GET(req: NextRequest) {
             },
             take: limit,
             skip: offset
-        })
-        return NextResponse.json({ Posts: test });
+        });
+        
+        console.log('🔍 [Server] Found posts:', posts.length);
+        return NextResponse.json({ Posts: posts });
     } catch (error) {
-        console.log(error)
+        console.error('❌ [Server] Database error:', error);
+        return NextResponse.json({ error: 'Database error occurred' }, { status: 500 });
     }
 }   

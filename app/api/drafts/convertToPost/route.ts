@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
       categoryIds, 
       subCategoryIds,
       linkPreviews,
-      mediaFiles
+      mediaFiles,
+      email
     } = body;
 
     if (!draftId || !userId || !title || (!content && !contentMarkdown)) {
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
         links: links,
         tags: tags,
         title: title,
-        email: '', // Drafts don't have email
+        email: email || '', // Use email from request or fallback to empty string
         userId: userId,
         votes: 0,
         likes: [],

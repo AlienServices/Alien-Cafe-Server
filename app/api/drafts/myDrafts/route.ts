@@ -7,9 +7,7 @@ export async function GET(req: NextRequest) {
   try {
     const userId = req.nextUrl.searchParams.get('userId');
     const draftId = req.nextUrl.searchParams.get('draftId');
-    debugger; // After extracting userId and draftId
     if (!userId) {
-      debugger; // Missing userId
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
     }
     if (draftId) {
@@ -60,7 +58,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ drafts: draftsWithCollaborators });
   } catch (error) {
     console.error('Error fetching drafts:', error);
-    debugger; // On error
     return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
   }
 } 
