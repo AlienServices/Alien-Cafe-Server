@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
         const post = await prisma.post.create({
             data: {
-                thesis: data.title,
+                thesis: data.thesis ?? data.title,
                 content: data.content,
                 primaryLinks: data.primaryLinks,
                 links: data.links,

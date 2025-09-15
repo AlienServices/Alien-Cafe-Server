@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import MarkdownIt from 'markdown-it';
 import sanitizeHtml from 'sanitize-html';
+import { log } from 'console';
 
 const prisma = new PrismaClient();
 
@@ -85,7 +86,12 @@ export async function POST(req: NextRequest) {
       subCategoryIds,
       linkPreviews,
       mediaFiles,
-      email
+      email,
+      yesAction,
+      noAction,
+      maybeAction,
+      probablyYesAction,
+      probablyNoAction
     } = body;
 
     if (!draftId || !userId || !title || (!content && !contentMarkdown)) {
@@ -93,6 +99,7 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('Converting draft to post:', { draftId, userId, title, mediaFilesCount: mediaFiles?.length || 0 });
+    console.log('yesAction:', yesAction);
 
     // Get the draft
     const draft = await prisma.draft.findFirst({
@@ -147,11 +154,11 @@ export async function POST(req: NextRequest) {
         votes: 0,
         likes: [],
         date: new Date(),
-        yesAction: '',
-        noAction: '',
-        maybeAction: '',
-        probablyNoAction: '',
-        probablyYesAction: '',
+        yesAction: yesAction || '',
+        noAction: noAction || '',
+        maybeAction: maybeAction || '',
+        probablyNoAction: probablyNoAction || '',
+        probablyYesAction: probablyYesAction || '',
         categories: {
           connect: categoryIds.map((id: string) => ({ id }))
         },
@@ -181,6 +188,45 @@ export async function POST(req: NextRequest) {
     });
 
     console.log('Post created successfully:', post.id);
+
+    // Generate search vector for the post
+    console.log('=== CREATING SEARCH VECTOR ===')
+    const searchableContent = [
+        post.title,
+        post.content,
+        post.links,
+        post.primaryLinks,
+        post.thesis,
+        post.yesAction,
+        post.noAction,
+        post.maybeAction,
+        post.probablyYesAction,
+        post.probablyNoAction,
+        post.tags?.join(' '),
+        Array.isArray(post.categories) ? post.categories.map((cat: any) => cat.name).join(' ') : '',
+        Array.isArray(post.subcategories) ? post.subcategories.map((subcat: any) => subcat.name).join(' ') : '',
+        post.owner?.username
+    ].filter(Boolean).join(' ')
+
+    console.log('Search vector length:', searchableContent.length)
+    console.log('Search vector preview:', searchableContent.substring(0, 100) + '...')
+
+    console.log('=== UPDATING POST WITH SEARCH VECTOR ===')
+    const updatedPost = await prisma.post.update({
+        where: { id: post.id },
+        data: {
+            searchVector: searchableContent
+        },
+        include: {
+            categories: true,
+            owner: true,
+            subcategories: true,
+            linkPreviews: true
+        }
+    })
+
+    console.log('=== POST UPDATED WITH SEARCH VECTOR ===')
+    console.log('Final post ID:', updatedPost.id)
 
     // Migrate media files from draft to post using the provided mediaFiles
     if (mediaFiles && mediaFiles.length > 0) {
@@ -308,7 +354,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      postId: post.id,
+      postId: updatedPost.id,
+      post: updatedPost,
       message: 'Draft converted to post successfully'
     });
 
