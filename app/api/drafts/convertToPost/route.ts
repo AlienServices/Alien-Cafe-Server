@@ -85,7 +85,6 @@ export async function POST(req: NextRequest) {
       categoryIds, 
       subCategoryIds,
       linkPreviews,
-      mediaFiles,
       email,
       yesAction,
       noAction,
@@ -98,7 +97,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    console.log('Converting draft to post:', { draftId, userId, title, mediaFilesCount: mediaFiles?.length || 0 });
+    console.log('Converting draft to post:', { draftId, userId, title });
     console.log('yesAction:', yesAction);
 
     // Get the draft
@@ -228,11 +227,12 @@ export async function POST(req: NextRequest) {
     console.log('=== POST UPDATED WITH SEARCH VECTOR ===')
     console.log('Final post ID:', updatedPost.id)
 
-    // Migrate media files from draft to post using the provided mediaFiles
-    if (mediaFiles && mediaFiles.length > 0) {
-      console.log('Migrating media files:', mediaFiles.length);
+    // Migrate media files from draft to post using the draft's saved media
+    console.log('Draft media:', draft.media);
+    if (draft.media && draft.media.length > 0) {
+      console.log('Migrating media files from draft:', draft.media.length);
       
-      for (const mediaFile of mediaFiles) {
+      for (const mediaFile of draft.media) {
         try {
           // If the media file has a storagePath (from server), migrate it
           if (mediaFile.storagePath) {
@@ -322,13 +322,6 @@ export async function POST(req: NextRequest) {
             });
 
             console.log('Media migrated successfully:', { filename: mediaFile.filename || mediaFile.id });
-          }
-          // If the media file has an actual File object, upload it directly
-          else if (mediaFile.file) {
-            console.log('Uploading new media file:', mediaFile.file.name);
-            
-            // This will be handled by the frontend after post creation
-            // The frontend will call the uploadMedia endpoint
           }
         } catch (error) {
           console.error('Error migrating media file:', error);
