@@ -7,190 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Comment {
-  id            String    @id
-  comment       String
-  vote          String
-  postId        String
-  likes         String[]
-  dislikes      String[]
-  userId        String
-  username      String
-  date          DateTime  @default(now())
-  parentId      String?
-  Comment       Comment?  @relation("CommentToComment", fields: [parentId], references: [id])
-  other_Comment Comment[] @relation("CommentToComment")
-  posts         posts     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  users         users     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model DeviceToken {
-  id        String   @id
-  userId    String
-  token     String   @unique
-  platform  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime
-  users     users    @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model Draft {
-  id                  String                @id
-  title               String
-  content             String
-  links               String?
-  primaryLinks        String?
-  ownerId             String
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime
-  categories          String[]              @default([])
-  subcategories       String[]              @default([])
-  tags                String[]              @default([])
-  contentHtml         String?
-  contentMarkdown     String?
-  contentText         String?
-  users               users                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  DraftCollaborator   DraftCollaborator[]
-  draft_link_previews draft_link_previews[]
-  draft_media         draft_media[]
-}
-
-model DraftCollaborator {
-  id        String   @id
-  userId    String
-  draftId   String
-  createdAt DateTime @default(now())
-  Draft     Draft    @relation(fields: [draftId], references: [id])
-  users     users    @relation(fields: [userId], references: [id])
-}
-
-model bookmarks {
-  id     String @id
-  userId String
-  postId String
-  posts  posts  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  users  users  @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model categories {
-  id            String          @id
-  name          String          @unique
-  iconPath      String?
-  isCustomIcon  Boolean         @default(false)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime
-  subcategories subcategories[]
-  posts         posts[]         @relation("CategoryToPost")
-}
-
-model conversations {
-  id        String     @id
-  me        String
-  roomName  String
-  recipient String
-  date      DateTime
-  messages  messages[]
-}
-
-model draft_link_previews {
-  id          String   @id
-  draftId     String
-  url         String
-  title       String?
-  description String?
-  imageUrl    String?
-  domain      String?
-  faviconUrl  String?
-  platform    String?
-  author      String?
-  site        String?
-  createdAt   DateTime @default(now())
-  Draft       Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
-
-  @@unique([draftId, url])
-}
-
-model draft_media {
-  id               String   @id
-  draftId          String
-  filename         String
-  originalName     String
-  fileSize         Int
-  mimeType         String
-  storagePath      String
-  thumbnailPath    String?
-  isVideo          Boolean  @default(false)
-  processingStatus String   @default("completed")
-  uploadDate       DateTime @default(now())
-  order            Int      @default(0)
-  Draft            Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
-}
-
-model friend_requests {
-  id                                      String   @id
-  senderId                                String
-  receiverId                              String
-  status                                  String   @default("pending")
-  createdAt                               DateTime @default(now())
-  updatedAt                               DateTime
-  users_friend_requests_receiverIdTousers users    @relation("friend_requests_receiverIdTousers", fields: [receiverId], references: [id], onDelete: Cascade)
-  users_friend_requests_senderIdTousers   users    @relation("friend_requests_senderIdTousers", fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@unique([senderId, receiverId])
-}
-
-model link_previews {
-  id          String   @id
-  postId      String
-  url         String
-  title       String?
-  description String?
-  imageUrl    String?
-  domain      String?
-  faviconUrl  String?
-  createdAt   DateTime @default(now())
-  posts       posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, url])
-}
-
-model messages {
-  id             String        @id
-  conversationId String
-  date           DateTime      @default(now())
-  message        String
-  userName       String
-  status         String
-  recipient      String
-  conversations  conversations @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-}
-
-model post_media {
-  id               String   @id
-  postId           String
-  filename         String
-  originalName     String
-  fileSize         Int
-  mimeType         String
-  storagePath      String
-  thumbnailPath    String?
-  altText          String?
-  caption          String?
-  isVideo          Boolean  @default(false)
-  processingStatus String   @default("completed")
-  uploadDate       DateTime @default(now())
-  order            Int      @default(0)
-  posts            posts    @relation(fields: [postId], references: [id], onDelete: Cascade)
-}
-
-model posts {
-  id                String          @id
+model Post {
+  id                String     @id @default(cuid())
   content           String?
+  contentMarkdown   String?
+  contentHtml       String?
+  contentText       String?
   title             String
   email             String?
   thesis            String?
   yesAction         String?
-  voteCount         Int?
+  votes             Int?
   maybeAction       String?
   noAction          String?
   voted             String[]
@@ -200,62 +27,258 @@ model posts {
   userId            String
   probablyNoAction  String?
   probablyYesAction String?
+  subcategories     Subcategory[] @relation("PostToSubcategory")
   links             String?
-  tags              String[]        @default([])
+  tags              String[]   @default([])
   primaryLinks      String?
-  searchVector      String?
-  collaborators     String[]        @default([])
-  contentHtml       String?
-  contentMarkdown   String?
-  contentText       String?
-  Comment           Comment[]
-  bookmarks         bookmarks[]
-  link_previews     link_previews[]
-  post_media        post_media[]
-  users             users           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  votes             votes[]
-  categories        categories[]    @relation("CategoryToPost")
-  subcategories     subcategories[] @relation("PostToSubcategory")
+  searchVector      String?    @db.Text
+  comments          Comment[]
+  bookmarks         Bookmark[]
+  owner             User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voteRecords       Vote[]
+  categories        Category[] @relation("CategoryToPost")
+  collaborators     String[]   @default([])
+  media             PostMedia[]
+  linkPreviews      LinkPreview[]
+
+  @@map("posts")
 }
 
-model subcategories {
-  id         String     @id
-  name       String
-  categoryId String
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime
-  categories categories @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  posts      posts[]    @relation("PostToSubcategory")
+model User {
+  id        String     @id @default(cuid())
+  email     String     @unique
+  username  String
+  voted     Json[]
+  bio       String?
+  followers String[]
+  following String[]
+  friends   String[]   @default([])
+  blurhash  String?
+  isAdmin   Boolean    @default(false)
+  comments  Comment[]
+  bookmarks Bookmark[]
+  posts     Post[]
+  votes     Vote[]
+  drafts    Draft[]    @relation("UserDrafts")
+  collaboratorDrafts DraftCollaborator[]
+  hasNewDrafts Boolean @default(false)
+  deviceTokens DeviceToken[]
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+
+  @@map("users")
 }
 
-model users {
-  id                                                String              @id
-  email                                             String              @unique
-  username                                          String
-  voted                                             Json[]
-  bio                                               String?
-  followers                                         String[]
-  following                                         String[]
-  blurhash                                          String?
-  hasNewDrafts                                      Boolean             @default(false)
-  friends                                           String[]            @default([])
-  isAdmin                                           Boolean             @default(false)
-  Comment                                           Comment[]
-  DeviceToken                                       DeviceToken[]
-  Draft                                             Draft[]
-  DraftCollaborator                                 DraftCollaborator[]
-  bookmarks                                         bookmarks[]
-  friend_requests_friend_requests_receiverIdTousers friend_requests[]   @relation("friend_requests_receiverIdTousers")
-  friend_requests_friend_requests_senderIdTousers   friend_requests[]   @relation("friend_requests_senderIdTousers")
-  posts                                             posts[]
-  votes                                             votes[]
+model Bookmark {
+  id     String @id @default(cuid())
+  userId String
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("bookmarks")
 }
 
-model votes {
-  id     String @id
+model Conversation {
+  id        String    @id @default(cuid())
+  me        String
+  roomName  String
+  recipient String
+  date      DateTime
+  messages  Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  date           DateTime     @default(now())
+  message        String
+  userName       String
+  status         String
+  recipient      String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Vote {
+  id     String @id @default(cuid())
   vote   String
   userId String
   postId String
-  posts  posts  @relation(fields: [postId], references: [id], onDelete: Cascade)
-  users  users  @relation(fields: [userId], references: [id])
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("votes")
+}
+
+model Comment {
+  id       String    @id @default(cuid())
+  comment  String
+  vote     String
+  postId   String
+  likes    String[]
+  dislikes String[]
+  userId   String
+  username String
+  date     DateTime  @default(now())
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  iconPath      String?
+  isCustomIcon  Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  subcategories Subcategory[]
+  posts         Post[]        @relation("CategoryToPost")
+
+  @@map("categories")
+}
+
+model Subcategory {
+  id         String   @id @default(cuid())
+  name       String
+  categoryId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  posts      Post[]   @relation("PostToSubcategory")
+
+  @@map("subcategories")
+}
+
+model Draft {
+  id            String   @id @default(cuid())
+  title         String
+  content       String
+  contentMarkdown String?
+  contentHtml     String?
+  contentText     String?
+  links         String?
+  primaryLinks  String?
+  ownerId       String
+  categories    String[]   @default([])
+  subcategories String[]   @default([])
+  tags          String[]   @default([])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  owner         User     @relation("UserDrafts", fields: [ownerId], references: [id], onDelete: Cascade)
+  collaborators DraftCollaborator[]
+  media         DraftMedia[]
+  linkPreviews  DraftLinkPreview[]
+}
+
+model DraftCollaborator {
+  id       String   @id @default(cuid())
+  user     User     @relation(fields: [userId], references: [id])
+  userId   String
+  draft    Draft    @relation(fields: [draftId], references: [id])
+  draftId  String
+  createdAt DateTime @default(now())
+}
+
+model DraftMedia {
+  id          String   @id @default(cuid())
+  draftId     String
+  filename    String
+  originalName String
+  fileSize    Int
+  mimeType    String
+  storagePath String   // Supabase storage path
+  thumbnailPath String? // Generated thumbnail path
+  isVideo     Boolean  @default(false)
+  processingStatus String @default("completed") // pending, processing, completed, failed
+  uploadDate  DateTime @default(now())
+  order       Int      @default(0) // For ordering media in gallery
+  draft       Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@map("draft_media")
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("pending") // pending, accepted, rejected
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  sender     User     @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@map("friend_requests")
+}
+
+model PostMedia {
+  id          String   @id @default(cuid())
+  postId      String
+  filename    String
+  originalName String
+  fileSize    Int
+  mimeType    String
+  storagePath String   // Supabase storage path
+  thumbnailPath String? // Generated thumbnail path
+  altText     String?
+  caption     String?
+  isVideo     Boolean  @default(false)
+  processingStatus String @default("completed") // pending, processing, completed, failed
+  uploadDate  DateTime @default(now())
+  order       Int      @default(0) // For ordering media in gallery
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@map("post_media")
+}
+
+model LinkPreview {
+  id          String   @id @default(cuid())
+  postId      String
+  url         String
+  title       String?
+  description String?
+  imageUrl    String?
+  domain      String?
+  faviconUrl  String?
+  createdAt   DateTime @default(now())
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, url])
+  @@map("link_previews")
+}
+
+model DraftLinkPreview {
+  id          String   @id @default(cuid())
+  draftId     String
+  url         String
+  title       String?
+  description String?
+  imageUrl    String?
+  domain      String?
+  faviconUrl  String?
+  platform    String?  // X/Twitter specific
+  author      String?  // X/Twitter specific
+  site        String?  // X/Twitter specific
+  createdAt   DateTime @default(now())
+  draft       Draft    @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@unique([draftId, url])
+  @@map("draft_link_previews")
 }
