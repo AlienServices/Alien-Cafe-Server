@@ -190,7 +190,7 @@ model posts {
   email             String?
   thesis            String?
   yesAction         String?
-  votes             Int?
+  voteCount         Int?
   maybeAction       String?
   noAction          String?
   voted             String[]
