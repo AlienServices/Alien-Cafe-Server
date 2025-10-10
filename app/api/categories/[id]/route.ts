@@ -1,7 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
 
 // Helper function to check if user is admin
 async function checkAdminStatus(email: string): Promise<boolean> {

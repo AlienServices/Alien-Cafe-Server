@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
 
-const prisma = new PrismaClient();
 
 function getSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL;

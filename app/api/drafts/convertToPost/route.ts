@@ -1,11 +1,10 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import MarkdownIt from 'markdown-it';
 import sanitizeHtml from 'sanitize-html';
 import { log } from 'console';
 
-const prisma = new PrismaClient();
 
 // Helper function for fallback file migration
 async function fallbackFileMigration(

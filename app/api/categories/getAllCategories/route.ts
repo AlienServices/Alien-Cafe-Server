@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma, withRetry } from '@/lib/prisma'
 
 export async function GET(req: NextRequest) {
   console.log("Fetching categories")
@@ -9,35 +7,24 @@ export async function GET(req: NextRequest) {
   console.log("Request method:", req.method)
   
   try {
-    // Test database connection first
-    await prisma.$connect()
-    console.log("Database connection successful")
-    
-    // Start with a simple query
-    const categories = await prisma.category.findMany({
-      orderBy: {
-        name: 'asc'
-      }
-    })
-    
-    console.log(`Found ${categories.length} categories`)
-    
-    // If simple query works, try the full query
-    const fullCategories = await prisma.category.findMany({
-      include: {
-        subcategories: true,
-        _count: {
-          select: {
-            posts: true
+    // Use withRetry wrapper to handle connection errors
+    const fullCategories = await withRetry(async () => {
+      return await prisma.category.findMany({
+        include: {
+          subcategories: true,
+          _count: {
+            select: {
+              posts: true
+            }
           }
+        },
+        orderBy: {
+          name: 'asc'
         }
-      },
-      orderBy: {
-        name: 'asc'
-      }
+      })
     })
     
-    console.log(`Full query found ${fullCategories.length} categories`)
+    console.log(`Found ${fullCategories.length} categories`)
     
     // Ensure subcategories are ordered case-insensitively by name
     const sortedCategories = fullCategories.map((category) => ({
@@ -63,7 +50,5 @@ export async function GET(req: NextRequest) {
       { error: 'Failed to fetch categories', details: error instanceof Error ? error.message : 'Unknown error' }, 
       { status: 500 }
     )
-  } finally {
-    await prisma.$disconnect()
   }
 }

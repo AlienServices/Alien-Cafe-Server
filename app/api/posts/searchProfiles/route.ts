@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from '@/lib/prisma'
 import { log } from "console";
 import { NextResponse, NextRequest } from "next/server";
 
-const prisma = new PrismaClient();
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 

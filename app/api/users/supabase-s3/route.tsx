@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { encode } from "blurhash";
 import sharp from "sharp";// pages/api/upload.js
-import { PrismaClient } from "@prisma/client";
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
 
 function getSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL;

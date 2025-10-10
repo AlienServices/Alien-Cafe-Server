@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '../lib/prisma'
 import * as fs from 'fs'
 import * as path from 'path'
 
-const prisma = new PrismaClient()
 
 // Function to sanitize names for database and icon paths
 function sanitizeName(name: string): { dbName: string; iconPath: string } {

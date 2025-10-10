@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import * as fs from 'fs'
 import * as path from 'path'
 
-const prisma = new PrismaClient()
 
 // Function to sanitize names for database and icon paths
 function sanitizeName(name: string): { dbName: string; iconPath: string } {
@@ -181,8 +180,6 @@ export async function POST(request: NextRequest) {
       message: 'Seeding failed',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 }
 
@@ -206,7 +203,5 @@ export async function GET() {
       message: 'Failed to get seeding status',
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
-  } finally {
-    await prisma.$disconnect()
   }
 } 

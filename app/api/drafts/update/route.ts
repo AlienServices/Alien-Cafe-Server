@@ -1,10 +1,9 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import MarkdownIt from 'markdown-it';
 import sanitizeHtml from 'sanitize-html';
 
-const prisma = new PrismaClient();
 
 // Initialize Firebase Admin if not already initialized
 let firebaseApp: admin.app.App | undefined;

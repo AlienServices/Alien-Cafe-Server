@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { extractUrls } from '../../../../utils/urlUtils'
-
-const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
     const data = await req.json()
