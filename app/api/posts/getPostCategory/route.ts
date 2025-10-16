@@ -5,10 +5,10 @@ import { NextResponse, NextRequest } from 'next/server';
 export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const categoryId = searchParams.get('categoryId');
-    const subcategories = searchParams.getAll('subCategory'); // Handle multiple subcategories
+    const subCategoryId = searchParams.get('subCategoryId'); // Single subcategory filter
     const page = parseInt(searchParams.get('page') || '1', 10);
     const limit = parseInt(searchParams.get('limit') || '3', 10);
-    console.log(categoryId)
+    console.log(categoryId, subCategoryId)
 
     if (!categoryId) {
         return NextResponse.json(
@@ -18,25 +18,33 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        // Get total count for pagination
-        const total = await prisma.post.count({
-            where: {
-                categories: {
-                    some: { id: categoryId }
+        // Build where clause for posts
+        const whereClause: any = {
+            categories: {
+                some: {
+                    id: categoryId
                 }
             }
+        };
+
+        // Add subcategory filtering if specified
+        if (subCategoryId) {
+            whereClause.subcategories = {
+                some: {
+                    id: subCategoryId
+                }
+            };
+        }
+
+        // Get total count for pagination
+        const total = await prisma.post.count({
+            where: whereClause
         });
 
         // Fetch paginated posts
         const skip = (page - 1) * limit;
         const posts = await prisma.post.findMany({
-            where: {
-                categories: {
-                    some: {
-                        id: categoryId
-                    }
-                }
-            },
+            where: whereClause,
             include: {
                 owner: true,
                 comments: true,
@@ -46,6 +54,7 @@ export async function GET(req: NextRequest) {
                         subcategories: true
                     }
                 },
+                subcategories: true,
                 linkPreviews: true,
                 media: {
                     orderBy: {
@@ -61,26 +70,8 @@ export async function GET(req: NextRequest) {
         // Ensure `subCategories` is always an array
         console.log(posts)
         posts.forEach((post) => {
-            (post as any).subCategories = post.categories.flatMap(cat => cat.subcategories || []);
-        });
-
-        if (subcategories.length > 0) {
-            posts.sort((a, b) => {
-                const aMatches = (a as any).subCategories.filter((subCat: any) => subcategories.includes(subCat)).length;
-                const bMatches = (b as any).subCategories.filter((subCat: any) => subcategories.includes(subCat)).length;
-
-                // ✅ Ensure posts with matching subcategories come first
-                if (aMatches !== bMatches) {
-                    return bMatches - aMatches; // Higher match count first
-                }
-
-                // ✅ Within matching posts, sort by alphabetical order of subcategories
-                const aSortedSubCat = (a as any).subCategories.slice().sort().join(', ');
-                const bSortedSubCat = (b as any).subCategories.slice().sort().join(', ');
-
-                return aSortedSubCat.localeCompare(bSortedSubCat);
-            });
-        }        
+            (post as any).subCategories = post.subcategories || [];
+        });        
         return NextResponse.json({
             posts,
             page,
@@ -96,3 +87,4 @@ export async function GET(req: NextRequest) {
         );
     }
 }
+

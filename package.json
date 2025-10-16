@@ -14,7 +14,11 @@
     "remove-subcategories": "ts-node scripts/remove-subcategories.ts",
     "seed-subcategories": "ts-node scripts/seed-subcategories.ts",
     "seed-categories-from-json": "ts-node scripts/seed-categories-from-json.ts",
-    "create-search-index": "ts-node --project scripts/tsconfig.json scripts/create-search-index.ts"
+    "create-search-index": "ts-node --project scripts/tsconfig.json scripts/create-search-index.ts",
+    "fix-x-images": "ts-node --project scripts/tsconfig.json scripts/fix-x-link-preview-images.ts",
+    "fix-single-x": "ts-node --project scripts/tsconfig.json scripts/fix-single-x-preview.ts",
+    "fix-x-fast": "ts-node --project scripts/tsconfig.json scripts/fix-x-without-api.ts",
+    "list-x-needed": "ts-node --project scripts/tsconfig.json scripts/list-x-previews-needing-fix.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",

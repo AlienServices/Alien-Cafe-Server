@@ -1114,8 +1114,15 @@ async function fetchXEmbed(url: string): Promise<any> {
           let imageUrl = null;
           if (tweetData.media && tweetData.media.length > 0) {
             const media = tweetData.media[0];
-            // Prefer preview_image_url for photos, url for videos
-            imageUrl = media.preview_image_url || media.url;
+            // For videos, use preview_image_url (thumbnail)
+            // For photos, use url or preview_image_url
+            if (media.type === 'video') {
+              imageUrl = media.preview_image_url; // Video thumbnail
+              console.log('🎬 X video detected - using preview_image_url as thumbnail:', imageUrl);
+            } else {
+              imageUrl = media.url || media.preview_image_url;
+              console.log('📸 X photo detected - using url:', imageUrl);
+            }
           }
           
           const apiResult = {

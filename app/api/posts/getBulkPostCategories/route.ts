@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
                                     subcategories: true
                                 }
                             },
+                            subcategories: true,
                             linkPreviews: true,
                             media: {
                                 orderBy: {
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
 
                     // Ensure `subCategories` is always an array
                     posts.forEach((post) => {
-                        (post as any).subCategories = post.categories.flatMap(cat => cat.subcategories || []);
+                        (post as any).subCategories = post.subcategories || [];
                     });
 
                     return {
