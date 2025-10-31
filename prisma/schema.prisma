@@ -257,6 +257,11 @@ model LinkPreview {
   imageUrl    String?
   domain      String?
   faviconUrl  String?
+  isVideo     Boolean  @default(false)
+  embedUrl    String?
+  author      String?
+  platform    String?
+  site        String?
   createdAt   DateTime @default(now())
   post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -273,6 +278,8 @@ model DraftLinkPreview {
   imageUrl    String?
   domain      String?
   faviconUrl  String?
+  isVideo     Boolean  @default(false)
+  embedUrl    String?
   platform    String?  // X/Twitter specific
   author      String?  // X/Twitter specific
   site        String?  // X/Twitter specific

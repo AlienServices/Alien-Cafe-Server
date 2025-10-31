@@ -98,19 +98,48 @@ export async function POST(req: NextRequest) {
 
     console.log('Converting draft to post:', { draftId, userId, title });
     console.log('yesAction:', yesAction);
+    console.log('🎬 Link previews received in convertToPost request:', linkPreviews ? JSON.stringify(linkPreviews.map((p: any) => ({ 
+      url: p.url, 
+      isVideo: p.isVideo, 
+      isVideoType: typeof p.isVideo,
+      platform: p.platform 
+    })), null, 2) : 'none (will use saved draft link previews)');
 
     // Get the draft
     const draft = await prisma.draft.findFirst({
       where: { id: draftId, ownerId: userId },
       include: {
         media: true,
-        collaborators: true
+        collaborators: true,
+        linkPreviews: true // Include link previews for fallback
       }
     });
 
     if (!draft) {
       return NextResponse.json({ error: 'Draft not found or unauthorized' }, { status: 404 });
     }
+
+    // If linkPreviews not provided in request, use saved draft link previews
+    const linkPreviewsToUse = linkPreviews || draft.linkPreviews.map((lp: any) => ({
+      url: lp.url,
+      title: lp.title,
+      description: lp.description,
+      imageUrl: lp.imageUrl,
+      domain: lp.domain,
+      faviconUrl: lp.faviconUrl,
+      isVideo: lp.isVideo, // Use saved value from database
+      embedUrl: lp.embedUrl,
+      author: lp.author,
+      platform: lp.platform,
+      site: lp.site
+    }));
+    
+    console.log('🎬 Link previews to use (request or saved):', JSON.stringify(linkPreviewsToUse.map((p: any) => ({ 
+      url: p.url, 
+      isVideo: p.isVideo, 
+      isVideoType: typeof p.isVideo,
+      platform: p.platform 
+    })), null, 2));
 
     // Markdown → HTML → Text pipeline
     const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
@@ -164,16 +193,33 @@ export async function POST(req: NextRequest) {
           ? { connect: subCategoryIds.map((id: string) => ({ id })) }
           : undefined,
         // Create link previews if provided
-        linkPreviews: linkPreviews && Array.isArray(linkPreviews)
+        linkPreviews: linkPreviewsToUse && Array.isArray(linkPreviewsToUse)
           ? {
-              create: linkPreviews.map((preview: any) => ({
-                url: preview.url,
-                title: preview.title,
-                description: preview.description,
-                imageUrl: preview.imageUrl,
-                domain: preview.domain,
-                faviconUrl: preview.faviconUrl
-              }))
+              create: linkPreviewsToUse.map((preview: any) => {
+                // Debug logging for video detection
+                console.log('🎬 Converting link preview:', {
+                  url: preview.url,
+                  isVideo: preview.isVideo,
+                  isVideoType: typeof preview.isVideo,
+                  isVideoStrict: preview.isVideo === true,
+                  embedUrl: preview.embedUrl,
+                  platform: preview.platform
+                });
+                
+                return {
+                  url: preview.url,
+                  title: preview.title,
+                  description: preview.description,
+                  imageUrl: preview.imageUrl,
+                  domain: preview.domain,
+                  faviconUrl: preview.faviconUrl,
+                  isVideo: preview.isVideo === true || preview.isVideo === 'true', // Ensure boolean true is preserved
+                  embedUrl: preview.embedUrl ?? null,
+                  author: preview.author ?? null,
+                  platform: preview.platform ?? null,
+                  site: preview.site ?? null
+                };
+              })
             }
           : undefined
       },

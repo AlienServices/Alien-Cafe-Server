@@ -38,14 +38,24 @@ try {
 export async function PUT(req: NextRequest) {
   try {
     const { draftId, userId, title, content, contentMarkdown, links, primaryLinks, collaborators, categories, subcategories, tags, linkPreviews } = await req.json();
+    
+    console.log('📝 Draft update request:', { draftId, userId, hasTitle: !!title, hasContent: !!content });
+    
     if (!draftId || !userId) {
+      console.error('❌ Missing draftId or userId:', { draftId, userId });
       return NextResponse.json({ error: 'Missing draftId or userId' }, { status: 400 });
     }
+    
     // Check if user is owner or collaborator (join table)
+    console.log('🔍 Looking for draft with ID:', draftId);
     const draft = await prisma.draft.findUnique({ where: { id: draftId } });
+    
     if (!draft) {
+      console.error('❌ Draft not found:', draftId);
       return NextResponse.json({ error: 'Draft not found' }, { status: 404 });
     }
+    
+    console.log('✅ Draft found:', { id: draft.id, ownerId: draft.ownerId, title: draft.title });
     const isOwner = draft.ownerId === userId;
     const isCollaborator = await prisma.draftCollaborator.findFirst({ where: { draftId, userId } });
     if (!isOwner && !isCollaborator) {
@@ -110,9 +120,11 @@ export async function PUT(req: NextRequest) {
               imageUrl: preview.imageUrl,
               domain: preview.domain,
               faviconUrl: preview.faviconUrl,
-              platform: preview.platform,
-              author: preview.author,
-              site: preview.site,
+              isVideo: preview.isVideo === true || preview.isVideo === 'true', // Ensure boolean true is preserved
+              embedUrl: preview.embedUrl ?? null,
+              platform: preview.platform ?? null,
+              author: preview.author ?? null,
+              site: preview.site ?? null,
             },
           });
         }));
@@ -183,7 +195,11 @@ export async function PUT(req: NextRequest) {
       } 
     });
   } catch (error) {
-    console.error('Error updating draft:', error);
-    return NextResponse.json({ error: 'Failed to update draft' }, { status: 500 });
+    console.error('❌ Error updating draft:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    return NextResponse.json({ 
+      error: 'Failed to update draft',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
   }
 } 

@@ -41,6 +41,12 @@ export async function POST(req: NextRequest) {
     if (!ownerId || !title || (!content && !contentMarkdown)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+    
+    // Validate that owner exists
+    const owner = await prisma.user.findUnique({ where: { id: ownerId } });
+    if (!owner) {
+      return NextResponse.json({ error: 'Owner user not found' }, { status: 400 });
+    }
 
     // Prepare Markdown → HTML → Text pipeline (supports inline HTML for videos)
     const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
@@ -65,6 +71,11 @@ export async function POST(req: NextRequest) {
     });
     const textOnly = sanitizeHtml(sanitizedHtml, { allowedTags: [], allowedAttributes: {} }).trim();
     
+    // Ensure we have valid content (not empty after sanitization)
+    if (!sanitizedHtml || sanitizedHtml.trim().length === 0) {
+      return NextResponse.json({ error: 'Content cannot be empty after processing' }, { status: 400 });
+    }
+    
     // Create the draft without collaborators
     const draft = await prisma.draft.create({
       data: {
@@ -86,8 +97,10 @@ export async function POST(req: NextRequest) {
     });
 
     // Save link previews if provided
+    console.log('🎬 Link previews:', linkPreviews);
     if (linkPreviews && Array.isArray(linkPreviews) && linkPreviews.length > 0) {
       await Promise.all(linkPreviews.map(async (preview: any) => {
+        console.log('🎬 Preview:', preview);
         await prisma.draftLinkPreview.create({
           data: {
             draftId: draft.id,
@@ -97,9 +110,11 @@ export async function POST(req: NextRequest) {
             imageUrl: preview.imageUrl,
             domain: preview.domain,
             faviconUrl: preview.faviconUrl,
-            platform: preview.platform,
-            author: preview.author,
-            site: preview.site,
+            isVideo: true, // Ensure boolean true is preserved
+            embedUrl: preview.embedUrl ?? null,
+            platform: preview.platform ?? null,
+            author: preview.author ?? null,
+            site: preview.site ?? null,
           },
         });
       }));
@@ -107,7 +122,22 @@ export async function POST(req: NextRequest) {
 
     // Add collaborators via join table
     if (collaborators && collaborators.length > 0) {
-      await Promise.all(collaborators.map(async (userId: string) => {
+      // Validate that all collaborator IDs exist
+      const uniqueCollaborators = [...new Set(collaborators)] as string[];
+      const existingUsers = await prisma.user.findMany({
+        where: { id: { in: uniqueCollaborators } },
+        select: { id: true }
+      });
+      const existingUserIds = new Set(existingUsers.map(u => u.id));
+      const invalidUserIds = uniqueCollaborators.filter(id => !existingUserIds.has(id));
+      
+      if (invalidUserIds.length > 0) {
+        return NextResponse.json({ 
+          error: `Invalid collaborator user IDs: ${invalidUserIds.join(', ')}` 
+        }, { status: 400 });
+      }
+      
+      await Promise.all(uniqueCollaborators.map(async (userId: string) => {
         await prisma.draftCollaborator.create({
           data: { userId, draftId: draft.id },
         });
@@ -168,6 +198,15 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error creating draft:', error);
-    return NextResponse.json({ error: 'Failed to create draft' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorDetails = error instanceof Error ? error.stack : String(error);
+    console.error('Error details:', errorDetails);
+    
+    // Return more detailed error information
+    return NextResponse.json({ 
+      error: 'Failed to create draft',
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? errorDetails : undefined
+    }, { status: 500 });
   }
 } 

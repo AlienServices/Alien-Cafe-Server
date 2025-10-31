@@ -1125,6 +1125,9 @@ async function fetchXEmbed(url: string): Promise<any> {
             }
           }
           
+          // Determine if this is a video
+          const hasVideo = tweetData.media?.some((m: any) => m.type === 'video') || false;
+          
           const apiResult = {
             url: url,
             title: tweetData.author?.name ? `${tweetData.author.name}: ${tweetData.text?.substring(0, 100)}...` : tweetData.text?.substring(0, 100) + '...',
@@ -1132,13 +1135,14 @@ async function fetchXEmbed(url: string): Promise<any> {
             imageUrl: imageUrl,
             domain: new URL(url).hostname,
             faviconUrl: tweetData.author?.profile_image_url || null,
-            isVideo: tweetData.media?.some((m: any) => m.type === 'video') || false,
+            isVideo: hasVideo,
             author: tweetData.author?.username || '',
             site: tweetData.author?.name || '',
             platform: 'x',
-            // Additional API data
+            // Additional API data - preserve media array for video detection
             tweetId: tweetId,
             createdAt: tweetData.created_at,
+            media: tweetData.media || [], // Preserve media array
             mediaCount: tweetData.media?.length || 0
           };
           
@@ -1195,7 +1199,7 @@ async function fetchXEmbed(url: string): Promise<any> {
           imageUrl: null, // oEmbed doesn't provide images
           domain: urlObj.hostname,
           faviconUrl: null,
-          isVideo: false,
+          isVideo: true,
           author: oembedData.author_name || username,
           site: oembedData.author_url || username,
           platform: 'x'
@@ -1249,6 +1253,9 @@ async function fetchXEmbed(url: string): Promise<any> {
         const html = await response.text();
         console.log('📄 HTML response length:', html.length);
         
+        // Extract metadata including video detection
+        const metaData = extractMetaTags(html);
+        
         // Simple extraction using basic patterns
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
         const title = titleMatch ? titleMatch[1].trim() : '';
@@ -1262,17 +1269,38 @@ async function fetchXEmbed(url: string): Promise<any> {
         const pathParts = urlObj.pathname.split('/');
         const username = pathParts[1];
         
+        // Detect video from meta tags
+        const hasVideoMetadata = Boolean(
+          metaData.ogVideo || 
+          metaData.ogVideoType || 
+          metaData.twitterPlayer || 
+          metaData.twitterPlayerStream
+        );
+        
+        console.log('🎬 X HTML scraping video detection:', {
+          ogVideo: metaData.ogVideo,
+          ogVideoType: metaData.ogVideoType,
+          twitterPlayer: metaData.twitterPlayer,
+          twitterPlayerStream: metaData.twitterPlayerStream,
+          hasVideoMetadata
+        });
+        
         const scrapeResult = {
           url: url,
           title: title || `Tweet by @${username}`,
           description: description || 'View this tweet on X',
-          imageUrl: null,
+          imageUrl: metaData.imageUrl || null,
           domain: urlObj.hostname,
           faviconUrl: null,
-          isVideo: false,
+          isVideo: hasVideoMetadata, // Use meta tag detection
           author: username,
           site: username,
-          platform: 'x'
+          platform: 'x',
+          // Preserve video metadata for main handler
+          ogVideo: metaData.ogVideo,
+          ogVideoType: metaData.ogVideoType,
+          twitterPlayer: metaData.twitterPlayer,
+          twitterPlayerStream: metaData.twitterPlayerStream
         };
         
         console.log('✅ Using scraped data:', JSON.stringify(scrapeResult, null, 2));
@@ -1530,13 +1558,23 @@ export async function POST(request: NextRequest) {
         const authorDisplay = platformData.author || platformData.site || '';
         const title = authorDisplay ? `${authorDisplay}: ${platformData.title || ''}` : platformData.title || '';
         
-        // Enhanced X video detection
-        const isXVideoByApi = platformData.isVideo;
+        // Enhanced X video detection - check multiple sources
+        const isXVideoByApi = platformData.isVideo || false;
         const isXVideoByUrl = isVideoUrl(url);
-        const hasXVideoMetadata = Boolean(platformData.media?.some((m: any) => m.type === 'video'));
+        
+        // Check media array from API (Strategy 1)
+        const hasXVideoInMedia = Boolean(platformData.media?.some((m: any) => m.type === 'video'));
+        
+        // Check video metadata from HTML scraping (Strategy 3)
+        const hasXVideoMetadata = Boolean(
+          platformData.ogVideo || 
+          platformData.ogVideoType || 
+          platformData.twitterPlayer || 
+          platformData.twitterPlayerStream
+        );
         
         // Consider it a video if any of these conditions are met
-        const isXVideo = isXVideoByApi || isXVideoByUrl || hasXVideoMetadata;
+        const isXVideo = isXVideoByApi || isXVideoByUrl || hasXVideoInMedia || hasXVideoMetadata;
         
         // Generate embed URL for X videos
         const embedUrl = isXVideo ? getEmbedUrl(url) : null;
@@ -1545,7 +1583,10 @@ export async function POST(request: NextRequest) {
           url,
           isXVideoByApi,
           isXVideoByUrl,
+          hasXVideoInMedia,
           hasXVideoMetadata,
+          ogVideo: platformData.ogVideo,
+          twitterPlayer: platformData.twitterPlayer,
           finalIsXVideo: isXVideo,
           hasEmbedUrl: Boolean(embedUrl),
           mediaCount: platformData.media?.length || 0

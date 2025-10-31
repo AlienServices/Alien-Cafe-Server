@@ -57,7 +57,12 @@ export async function POST(req: Request) {
                             description: preview.description,
                             imageUrl: preview.imageUrl,
                             domain: preview.domain,
-                            faviconUrl: preview.faviconUrl
+                            faviconUrl: preview.faviconUrl,
+                            isVideo: preview.isVideo === true || preview.isVideo === 'true', // Ensure boolean true is preserved
+                            embedUrl: preview.embedUrl ?? null,
+                            author: preview.author ?? null,
+                            platform: preview.platform ?? null,
+                            site: preview.site ?? null
                         }))
                     }
                     : undefined
