@@ -164,74 +164,178 @@ export async function POST(req: NextRequest) {
     });
     const textOnly = sanitizeHtml(sanitizedHtml, { allowedTags: [], allowedAttributes: {} }).trim();
 
-    // Create the post
-    const post = await prisma.post.create({
-      data: {
-        thesis: title,
-        content: sanitizedHtml, // legacy compatibility
-        contentMarkdown: contentMarkdown ?? null,
-        contentHtml: sanitizedHtml,
-        contentText: textOnly,
-        primaryLinks: primaryLinks,
-        links: links,
-        tags: tags,
-        title: title,
-        email: email || '', // Use email from request or fallback to empty string
-        userId: userId,
-        votes: 0,
-        likes: [],
-        date: new Date(),
-        yesAction: yesAction || '',
-        noAction: noAction || '',
-        maybeAction: maybeAction || '',
-        probablyNoAction: probablyNoAction || '',
-        probablyYesAction: probablyYesAction || '',
-        categories: {
-          connect: categoryIds.map((id: string) => ({ id }))
-        },
-        subcategories: subCategoryIds && Array.isArray(subCategoryIds)
-          ? { connect: subCategoryIds.map((id: string) => ({ id })) }
-          : undefined,
-        // Create link previews if provided
-        linkPreviews: linkPreviewsToUse && Array.isArray(linkPreviewsToUse)
-          ? {
-              create: linkPreviewsToUse.map((preview: any) => {
-                // Debug logging for video detection
-                console.log('🎬 Converting link preview:', {
-                  url: preview.url,
-                  isVideo: preview.isVideo,
-                  isVideoType: typeof preview.isVideo,
-                  isVideoStrict: preview.isVideo === true,
-                  embedUrl: preview.embedUrl,
-                  platform: preview.platform
-                });
-                
-                return {
+    // Check if this is an update to an existing post
+    const isUpdate = draft.originalPostId !== null && draft.originalPostId !== undefined;
+
+    let post;
+    if (isUpdate) {
+      // Update existing post
+      console.log('Updating existing post:', draft.originalPostId);
+      
+      // First, verify the post exists and user owns it
+      const existingPost = await prisma.post.findUnique({
+        where: { id: draft.originalPostId! },
+        include: {
+          categories: true,
+          subcategories: true,
+        }
+      });
+
+      if (!existingPost) {
+        return NextResponse.json({ error: 'Original post not found' }, { status: 404 });
+      }
+
+      if (existingPost.userId !== userId) {
+        return NextResponse.json({ error: 'Unauthorized to update this post' }, { status: 403 });
+      }
+
+      // Delete existing link previews (will recreate them)
+      await prisma.linkPreview.deleteMany({
+        where: { postId: draft.originalPostId! }
+      });
+
+      // Delete existing media (will recreate them from draft media)
+      await prisma.postMedia.deleteMany({
+        where: { postId: draft.originalPostId! }
+      });
+
+      // Disconnect existing categories and subcategories
+      await prisma.post.update({
+        where: { id: draft.originalPostId! },
+        data: {
+          categories: {
+            set: []
+          },
+          subcategories: {
+            set: []
+          }
+        }
+      });
+
+      // Update the post, preserving ID, date, votes, comments, etc.
+      post = await prisma.post.update({
+        where: { id: draft.originalPostId! },
+        data: {
+          thesis: title,
+          content: sanitizedHtml,
+          contentMarkdown: contentMarkdown ?? null,
+          contentHtml: sanitizedHtml,
+          contentText: textOnly,
+          primaryLinks: primaryLinks,
+          links: links,
+          tags: tags,
+          title: title,
+          // Preserve original date
+          // Preserve votes, likes, dislikes, voted arrays
+          yesAction: yesAction || '',
+          noAction: noAction || '',
+          maybeAction: maybeAction || '',
+          probablyNoAction: probablyNoAction || '',
+          probablyYesAction: probablyYesAction || '',
+          categories: {
+            connect: categoryIds.map((id: string) => ({ id }))
+          },
+          subcategories: subCategoryIds && Array.isArray(subCategoryIds)
+            ? { connect: subCategoryIds.map((id: string) => ({ id })) }
+            : undefined,
+          // Create new link previews
+          linkPreviews: linkPreviewsToUse && Array.isArray(linkPreviewsToUse)
+            ? {
+                create: linkPreviewsToUse.map((preview: any) => ({
                   url: preview.url,
                   title: preview.title,
                   description: preview.description,
                   imageUrl: preview.imageUrl,
                   domain: preview.domain,
                   faviconUrl: preview.faviconUrl,
-                  isVideo: preview.isVideo === true || preview.isVideo === 'true', // Ensure boolean true is preserved
+                  isVideo: preview.isVideo === true || preview.isVideo === 'true',
                   embedUrl: preview.embedUrl ?? null,
                   author: preview.author ?? null,
                   platform: preview.platform ?? null,
                   site: preview.site ?? null
-                };
-              })
-            }
-          : undefined
-      },
-      include: {
-        categories: true,
-        owner: true,
-        subcategories: true,
-        linkPreviews: true
-      }
-    });
+                }))
+              }
+            : undefined
+        },
+        include: {
+          categories: true,
+          owner: true,
+          subcategories: true,
+          linkPreviews: true
+        }
+      });
 
-    console.log('Post created successfully:', post.id);
+      console.log('Post updated successfully:', post.id);
+    } else {
+      // Create new post
+      post = await prisma.post.create({
+        data: {
+          thesis: title,
+          content: sanitizedHtml, // legacy compatibility
+          contentMarkdown: contentMarkdown ?? null,
+          contentHtml: sanitizedHtml,
+          contentText: textOnly,
+          primaryLinks: primaryLinks,
+          links: links,
+          tags: tags,
+          title: title,
+          email: email || '', // Use email from request or fallback to empty string
+          userId: userId,
+          votes: 0,
+          likes: [],
+          date: new Date(),
+          yesAction: yesAction || '',
+          noAction: noAction || '',
+          maybeAction: maybeAction || '',
+          probablyNoAction: probablyNoAction || '',
+          probablyYesAction: probablyYesAction || '',
+          categories: {
+            connect: categoryIds.map((id: string) => ({ id }))
+          },
+          subcategories: subCategoryIds && Array.isArray(subCategoryIds)
+            ? { connect: subCategoryIds.map((id: string) => ({ id })) }
+            : undefined,
+          // Create link previews if provided
+          linkPreviews: linkPreviewsToUse && Array.isArray(linkPreviewsToUse)
+            ? {
+                create: linkPreviewsToUse.map((preview: any) => {
+                  // Debug logging for video detection
+                  console.log('🎬 Converting link preview:', {
+                    url: preview.url,
+                    isVideo: preview.isVideo,
+                    isVideoType: typeof preview.isVideo,
+                    isVideoStrict: preview.isVideo === true,
+                    embedUrl: preview.embedUrl,
+                    platform: preview.platform
+                  });
+                  
+                  return {
+                    url: preview.url,
+                    title: preview.title,
+                    description: preview.description,
+                    imageUrl: preview.imageUrl,
+                    domain: preview.domain,
+                    faviconUrl: preview.faviconUrl,
+                    isVideo: preview.isVideo === true || preview.isVideo === 'true', // Ensure boolean true is preserved
+                    embedUrl: preview.embedUrl ?? null,
+                    author: preview.author ?? null,
+                    platform: preview.platform ?? null,
+                    site: preview.site ?? null
+                  };
+                })
+              }
+            : undefined
+        },
+        include: {
+          categories: true,
+          owner: true,
+          subcategories: true,
+          linkPreviews: true
+        }
+      });
+
+      console.log('Post created successfully:', post.id);
+    }
 
     // Generate search vector for the post
     console.log('=== CREATING SEARCH VECTOR ===')
@@ -282,91 +386,124 @@ export async function POST(req: NextRequest) {
           // If the media file has a storagePath (from server), migrate it
           if (mediaFile.storagePath) {
             const oldPath = mediaFile.storagePath;
-            const newPath = oldPath.replace('draftmedia/', 'postmedia/');
+            let newPath = oldPath;
             
-            console.log('Migrating file:', { from: oldPath, to: newPath });
-
-            // Check if file exists at old path
-            const { data: fileExists } = await supabase.storage
-              .from('postmedia')
-              .list(oldPath.split('/').slice(0, -1).join('/'), {
-                search: oldPath.split('/').pop()
-              });
-
-            if (!fileExists || fileExists.length === 0) {
-              console.error('File not found at old path:', oldPath);
-              continue;
-            }
-
-            // Try to rename the file in storage (more efficient than download/upload)
-            try {
-              // First, try to copy to new location
-              const { data: copyData, error: copyError } = await supabase.storage
-                .from('postmedia')
-                .copy(oldPath, newPath);
-
-              if (copyError) {
-                console.error('Error copying file:', copyError);
-                // Fallback to download/upload if copy fails
-                await fallbackFileMigration(mediaFile, newPath, post.id, userId, supabase);
-              } else {
-                console.log('File copied successfully to new location');
-                
-                // Delete the old file
-                const { error: deleteError } = await supabase.storage
-                  .from('postmedia')
-                  .remove([oldPath]);
-                
-                if (deleteError) {
-                  console.error('Error deleting old file:', deleteError);
-                }
-              }
-            } catch (error) {
-              console.error('Error during file copy, falling back to download/upload:', error);
-              await fallbackFileMigration(mediaFile, newPath, post.id, userId, supabase);
-            }
-
-            // Handle thumbnail migration
-            let newThumbnailPath = null;
-            if (mediaFile.thumbnailPath) {
-              const oldThumbnailPath = mediaFile.thumbnailPath;
-              const thumbnailNewPath = oldThumbnailPath.replace('draftmedia/', 'postmedia/');
+            // Only migrate if path contains draftmedia (new draft from post will already be in postmedia)
+            if (oldPath.includes('draftmedia/')) {
+              newPath = oldPath.replace('draftmedia/', 'postmedia/');
               
-              try {
-                const { data: thumbnailCopyData, error: thumbnailCopyError } = await supabase.storage
-                  .from('postmedia')
-                  .copy(oldThumbnailPath, thumbnailNewPath);
+              console.log('Migrating file:', { from: oldPath, to: newPath });
 
-                if (!thumbnailCopyError) {
-                  newThumbnailPath = thumbnailNewPath;
+              // Check if file exists at old path
+              const { data: fileExists } = await supabase.storage
+                .from('postmedia')
+                .list(oldPath.split('/').slice(0, -1).join('/'), {
+                  search: oldPath.split('/').pop()
+                });
+
+              if (!fileExists || fileExists.length === 0) {
+                console.error('File not found at old path:', oldPath);
+                continue;
+              }
+
+              // Try to rename the file in storage (more efficient than download/upload)
+              try {
+                // First, try to copy to new location
+                const { data: copyData, error: copyError } = await supabase.storage
+                  .from('postmedia')
+                  .copy(oldPath, newPath);
+
+                if (copyError) {
+                  console.error('Error copying file:', copyError);
+                  // Fallback to download/upload if copy fails
+                  await fallbackFileMigration(mediaFile, newPath, post.id, userId, supabase);
+                } else {
+                  console.log('File copied successfully to new location');
                   
-                  // Delete old thumbnail
-                  await supabase.storage
+                  // Delete the old file
+                  const { error: deleteError } = await supabase.storage
                     .from('postmedia')
-                    .remove([oldThumbnailPath]);
+                    .remove([oldPath]);
+                  
+                  if (deleteError) {
+                    console.error('Error deleting old file:', deleteError);
+                  }
                 }
               } catch (error) {
-                console.error('Error migrating thumbnail:', error);
+                console.error('Error during file copy, falling back to download/upload:', error);
+                await fallbackFileMigration(mediaFile, newPath, post.id, userId, supabase);
               }
+
+              // Handle thumbnail migration
+              let newThumbnailPath = null;
+              if (mediaFile.thumbnailPath) {
+                const oldThumbnailPath = mediaFile.thumbnailPath;
+                if (oldThumbnailPath.includes('draftmedia/')) {
+                  const thumbnailNewPath = oldThumbnailPath.replace('draftmedia/', 'postmedia/');
+                  
+                  try {
+                    const { data: thumbnailCopyData, error: thumbnailCopyError } = await supabase.storage
+                      .from('postmedia')
+                      .copy(oldThumbnailPath, thumbnailNewPath);
+
+                    if (!thumbnailCopyError) {
+                      newThumbnailPath = thumbnailNewPath;
+                      
+                      // Delete old thumbnail
+                      await supabase.storage
+                        .from('postmedia')
+                        .remove([oldThumbnailPath]);
+                    }
+                  } catch (error) {
+                    console.error('Error migrating thumbnail:', error);
+                  }
+                } else {
+                  newThumbnailPath = mediaFile.thumbnailPath;
+                }
+              }
+
+              // Create post media record
+              await prisma.postMedia.create({
+                data: {
+                  postId: post.id,
+                  filename: mediaFile.filename || mediaFile.id,
+                  originalName: mediaFile.originalName || 'unknown',
+                  fileSize: mediaFile.fileSize || 0,
+                  mimeType: mediaFile.mimeType || 'application/octet-stream',
+                  storagePath: newPath,
+                  thumbnailPath: newThumbnailPath,
+                  isVideo: mediaFile.isVideo || false,
+                  processingStatus: 'completed',
+                  order: mediaFile.order || 0
+                }
+              });
+
+              console.log('Media migrated successfully:', { filename: mediaFile.filename || mediaFile.id });
+            } else {
+              // File already in postmedia (from createFromPost), just create the record
+              let newThumbnailPath = mediaFile.thumbnailPath;
+              if (mediaFile.thumbnailPath && mediaFile.thumbnailPath.includes('draftmedia/')) {
+                // Update thumbnail path if needed
+                newThumbnailPath = mediaFile.thumbnailPath.replace('draftmedia/', 'postmedia/');
+              }
+
+              await prisma.postMedia.create({
+                data: {
+                  postId: post.id,
+                  filename: mediaFile.filename || mediaFile.id,
+                  originalName: mediaFile.originalName || 'unknown',
+                  fileSize: mediaFile.fileSize || 0,
+                  mimeType: mediaFile.mimeType || 'application/octet-stream',
+                  storagePath: newPath,
+                  thumbnailPath: newThumbnailPath,
+                  isVideo: mediaFile.isVideo || false,
+                  processingStatus: 'completed',
+                  order: mediaFile.order || 0
+                }
+              });
+
+              console.log('Media record created (file already in postmedia):', { filename: mediaFile.filename || mediaFile.id });
             }
-
-            // Create post media record
-            await prisma.postMedia.create({
-              data: {
-                postId: post.id,
-                filename: mediaFile.filename || mediaFile.id,
-                originalName: mediaFile.originalName || 'unknown',
-                fileSize: mediaFile.fileSize || 0,
-                mimeType: mediaFile.mimeType || 'application/octet-stream',
-                storagePath: newPath,
-                thumbnailPath: newThumbnailPath,
-                isVideo: mediaFile.isVideo || false,
-                processingStatus: 'completed',
-                order: mediaFile.order || 0
-              }
-            });
-
-            console.log('Media migrated successfully:', { filename: mediaFile.filename || mediaFile.id });
           }
         } catch (error) {
           console.error('Error migrating media file:', error);
@@ -394,7 +531,8 @@ export async function POST(req: NextRequest) {
       success: true,
       postId: updatedPost.id,
       post: updatedPost,
-      message: 'Draft converted to post successfully'
+      message: isUpdate ? 'Post updated successfully' : 'Draft converted to post successfully',
+      isUpdate: isUpdate
     });
 
   } catch (error) {
