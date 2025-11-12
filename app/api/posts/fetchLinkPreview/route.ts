@@ -1354,34 +1354,41 @@ async function fetchXEmbed(url: string): Promise<any> {
 
 // Fetch Telegram post data (for public channels)
 async function fetchTelegramPost(url: string): Promise<any> {
+  console.log('🔍 Starting Telegram post fetch for URL:', url);
   try {
-    // Check cache first
     const cached = telegramCache.get(url);
     if (cached && (Date.now() - cached.timestamp) < PLATFORM_CACHE_DURATION) {
       return cached.data;
     }
 
-    // Extract channel and message ID from URL
     const urlObj = new URL(url);
-    const pathParts = urlObj.pathname.split('/');
-    
-    if (pathParts.length < 3) {
+    const normalizedPath = urlObj.pathname.replace(/\/+/g, '/').replace(/^\/+|\/+$/g, '');
+    const segments = normalizedPath.split('/').filter(Boolean);
+
+    if (segments.length < 2) {
       throw new Error('Invalid Telegram URL format');
     }
 
-    const channel = pathParts[1];
-    const messageId = pathParts[2];
+    const messageId = segments[segments.length - 1];
+    const channelSegments = segments.slice(0, -1);
+    const channelSlug = channelSegments.join('/');
+    const postSlug = segments.join('/');
+    const sharePath = ['s', ...segments].join('/');
+    const shareUrl = `https://t.me/${sharePath}`;
+    const embedUrl = `https://t.me/${postSlug}?embed=1`;
 
-    // For now, we'll just fetch the page and extract metadata
-    // In the future, you could integrate with Telegram Bot API if you have a bot
+    console.log('📱 Telegram share URL:', shareUrl);
     console.log('📱 Telegram fetch headers:', {
       'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
+      'Accept-Language': 'en-US,en;q=0.9'
     });
     
-    const response = await fetch(url, {
+    const response = await fetch(shareUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; LinkPreviewBot/1.0)',
+        'Accept-Language': 'en-US,en;q=0.9'
       },
+      redirect: 'follow',
       signal: AbortSignal.timeout(10000),
     });
 
@@ -1399,14 +1406,52 @@ async function fetchTelegramPost(url: string): Promise<any> {
     const html = await response.text();
     const metaData = extractMetaTags(html);
 
+    const messageMatch = html.match(/<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/i);
+    let messageHtml = '';
+    let messageText = '';
+
+    if (messageMatch) {
+      messageHtml = messageMatch[1]
+        .replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ')
+        .trim();
+      messageText = messageMatch[1]
+        .replace(/<br\s*\/?>(?=\s*<)/gi, '\n')
+        .replace(/<br\s*\/?>(?!\n)/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    }
+
+    const authorMatch = html.match(/tgme_widget_message_owner_name[^>]*>([^<]+)/i);
+    const author = authorMatch ? authorMatch[1].trim() : '';
+
+    const publishedMatch = html.match(/datetime="([^"]+)"/i);
+    let publishedAt: string | null = null;
+    if (publishedMatch) {
+      const parsed = new Date(publishedMatch[1]);
+      if (!Number.isNaN(parsed.getTime())) {
+        publishedAt = parsed.toISOString();
+      }
+    }
+
+    const viewsMatch = html.match(/tgme_widget_message_views[^>]*>([^<]+)/i);
+    const views = viewsMatch ? viewsMatch[1].trim() : '';
+
     const data = {
       ...metaData,
-      channel,
+      channel: channelSlug,
       messageId,
+      postSlug,
+      shareUrl,
+      embedUrl,
+      author,
+      messageHtml,
+      messageText,
+      publishedAt,
+      views,
       platform: 'telegram'
     };
 
-    // Cache the result
     telegramCache.set(url, {
       data,
       timestamp: Date.now()
@@ -1744,15 +1789,25 @@ export async function POST(request: NextRequest) {
       if (platformData) {
         const previewData = {
           url: url,
-          title: platformData.title || '',
-          description: platformData.description || '',
+          title: platformData.title || platformData.author || 'Telegram',
+          description: platformData.description || platformData.messageText || '',
           imageUrl: platformData.imageUrl || null,
           domain: urlObj.hostname,
-          faviconUrl: platformData.faviconUrl || null,
+          faviconUrl: platformData.faviconUrl || 'https://telegram.org/favicon.ico',
           cachedAt: new Date().toISOString(),
           isVideo: Boolean(platformData.ogVideo || platformData.twitterPlayer),
-          embedUrl: null, // Telegram doesn't provide embed URLs
-          platform: 'telegram'
+          embedUrl: null,
+          platform: 'telegram',
+          telegramChannel: platformData.channel,
+          telegramMessageId: platformData.messageId,
+          telegramPostSlug: platformData.postSlug,
+          telegramShareUrl: platformData.shareUrl,
+          telegramEmbedUrl: platformData.embedUrl,
+          telegramAuthor: platformData.author,
+          telegramHtml: platformData.messageHtml,
+          telegramText: platformData.messageText,
+          telegramPublishedAt: platformData.publishedAt,
+          telegramViews: platformData.views
         };
 
         // Cache the result
