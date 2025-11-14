@@ -17,7 +17,7 @@ model Post {
   email             String?
   thesis            String?
   yesAction         String?
-  votes             Int?
+  votes             Float?
   maybeAction       String?
   noAction          String?
   voted             String[]
@@ -104,12 +104,13 @@ model Message {
 }
 
 model Vote {
-  id     String @id @default(cuid())
-  vote   String
-  userId String
-  postId String
-  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id])
+  id        String   @id @default(cuid())
+  vote      String
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
 
   @@map("votes")
 }

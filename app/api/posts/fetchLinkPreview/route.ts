@@ -1404,7 +1404,9 @@ async function fetchTelegramPost(url: string): Promise<any> {
     }
 
     const html = await response.text();
+    console.log('📄 HTML response:', html);
     const metaData = extractMetaTags(html);
+    console.log('📄 Meta data:', metaData);
 
     const messageMatch = html.match(/<div class="tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/i);
     let messageHtml = '';
@@ -1421,6 +1423,20 @@ async function fetchTelegramPost(url: string): Promise<any> {
         .replace(/\n{3,}/g, '\n\n')
         .trim();
     }
+
+    // Detect if post is a video or image
+    const isVideoPost = html.includes('tgme_widget_message_video') || html.includes('tgme_widget_message_video_wrap');
+    const isImagePost = html.includes('tgme_widget_message_photo') || html.includes('tgme_widget_message_photo_wrap');
+    console.log('📱 Post type detection:', { isVideoPost, isImagePost });
+    
+    // Use og:image from meta tags (extracted by extractMetaTags)
+    const imageUrl = metaData.imageUrl || null;
+    console.log('📱 Final image URL (og:image):', { 
+      isVideoPost, 
+      isImagePost, 
+      ogImage: metaData.imageUrl, 
+      final: imageUrl 
+    });
 
     const authorMatch = html.match(/tgme_widget_message_owner_name[^>]*>([^<]+)/i);
     const author = authorMatch ? authorMatch[1].trim() : '';
@@ -1439,6 +1455,7 @@ async function fetchTelegramPost(url: string): Promise<any> {
 
     const data = {
       ...metaData,
+      imageUrl: imageUrl, // Override with post-specific image
       channel: channelSlug,
       messageId,
       postSlug,
@@ -1449,7 +1466,10 @@ async function fetchTelegramPost(url: string): Promise<any> {
       messageText,
       publishedAt,
       views,
-      platform: 'telegram'
+      platform: 'telegram',
+      // Post type detection
+      isVideoPost,
+      isImagePost
     };
 
     telegramCache.set(url, {

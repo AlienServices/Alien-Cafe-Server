@@ -1,12 +1,11 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse, NextRequest } from 'next/server';
+import { calculateAverageVoteScore } from '@/app/utils/voteUtils';
 
 export async function POST(req: any) {
     const data = await req.json();
     try {
         if (['true', 'probably true', 'neutral', 'probably false', 'voted false'].includes(data.vote)) {
-            const incrementValue = data.vote === 'true' ? 2 : data.vote === 'probably true' ? 1 : data.vote === 'neutral' ? 0 : data.vote === 'probably false' ? -1 : -2;
-
             const existingVote = await prisma.vote.findFirst({
                 where: {
                     userId: data.userId,
@@ -23,6 +22,8 @@ export async function POST(req: any) {
                     }
                 }, { status: 400 });
             }
+            
+            // Create the new vote (createdAt will be set automatically)
             const newVote = await prisma.vote.create({
                 data: {
                     vote: data.vote,
@@ -30,25 +31,34 @@ export async function POST(req: any) {
                     postId: data.id,
                 },
             });
-            if (incrementValue !== 0) {
-                await prisma.post.update({
-                    where: {
-                        id: data.id,
-                    },
-                    data: {
-                        votes: {
-                            increment: incrementValue,
-                        },
-                    },
-                });
-            }
+            
+            // Fetch all votes for this post to calculate the new average
+            const allVotes = await prisma.vote.findMany({
+                where: {
+                    postId: data.id,
+                },
+            });
+            
+            // Calculate the average vote score (includes old and new votes)
+            const averageScore = calculateAverageVoteScore(allVotes);
+            
+            // Update the post with the calculated average
+            await prisma.post.update({
+                where: {
+                    id: data.id,
+                },
+                data: {
+                    votes: averageScore,
+                },
+            });
+            
             return NextResponse.json({ vote: newVote });
         } else {
             return NextResponse.json({ 
                 error: 'Invalid vote',
                 details: {
                     received: data.vote,
-                    validValues: ['true', 'probably true', 'neutral', 'probably false', 'false']
+                    validValues: ['true', 'probably true', 'neutral', 'probably false', 'voted false']
                 }
             }, { status: 400 });
         }
