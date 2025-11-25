@@ -16,25 +16,32 @@ export async function GET(req: NextRequest) {
     }
     
     try {
-        const posts = await prisma.post.findMany({
-            where: {
-                email
-            },
-            include: {
-                categories: true,
-                linkPreviews: true,
-                media: {
-                    orderBy: {
-                        order: 'asc'
+        const [posts, totalCount] = await Promise.all([
+            prisma.post.findMany({
+                where: {
+                    email
+                },
+                include: {
+                    categories: true,
+                    linkPreviews: true,
+                    media: {
+                        orderBy: {
+                            order: 'asc'
+                        }
                     }
+                },
+                orderBy: {
+                    date: 'desc'
+                },
+                take: limit,
+                skip: offset
+            }),
+            prisma.post.count({
+                where: {
+                    email
                 }
-            },
-            orderBy: {
-                date: 'desc'
-            },
-            take: limit,
-            skip: offset
-        });
+            })
+        ]);
         
         // Calculate average vote scores for all posts
         const postIds = posts.map(p => p.id);
@@ -69,8 +76,8 @@ export async function GET(req: NextRequest) {
                 : post.votes
         }));
         
-        console.log('🔍 [Server] Found posts:', postsWithAverages.length);
-        return NextResponse.json({ Posts: postsWithAverages });
+        console.log('🔍 [Server] Found posts:', postsWithAverages.length, 'Total:', totalCount);
+        return NextResponse.json({ Posts: postsWithAverages, totalCount });
     } catch (error) {
         console.error('❌ [Server] Database error:', error);
         return NextResponse.json({ error: 'Database error occurred' }, { status: 500 });
