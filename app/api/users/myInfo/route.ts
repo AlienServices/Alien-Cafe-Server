@@ -28,20 +28,30 @@ export async function GET(req: NextRequest) {
     }
 
     try {
-        const user = await prisma.user.findFirst({
-            where: {
-                email: {
-                    equals: email,
-                    mode: 'insensitive'  // This will make the search case-insensitive
+        const [user, postCount] = await Promise.all([
+            prisma.user.findFirst({
+                where: {
+                    email: {
+                        equals: email,
+                        mode: 'insensitive'  // This will make the search case-insensitive
+                    }
                 }
-            }
-        })
+            }),
+            prisma.post.count({
+                where: {
+                    email: {
+                        equals: email,
+                        mode: 'insensitive'
+                    }
+                }
+            })
+        ])
         
         if (!user) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 })
         }
         
-        return NextResponse.json({ user });
+        return NextResponse.json({ user, postCount });
     } catch (error) {
         console.error('Database error:', error)
         return NextResponse.json({ error: 'Database error' }, { status: 500 })
