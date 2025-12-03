@@ -65,9 +65,8 @@ export async function GET(req: NextRequest) {
 
         const { data: categorySettings, error: settingsError } = await supabase
             .from('user_category_settings')
-            .select('category_name')
-            .eq('user_id', user.id)
-            .eq('setting', 'priority');
+            .select('category_name, setting')
+            .eq('user_id', user.id);
 
         if (settingsError) {
             console.error('Error fetching user category settings:', settingsError);
@@ -77,8 +76,15 @@ export async function GET(req: NextRequest) {
             );
         }
 
+        // Filter to only get priority categories (exclude 'default' and 'exclude' settings)
+        const prioritySettings = categorySettings?.filter(item => item.setting === 'priority') || [];
+        
+        // Log for debugging
+        console.log(`[Nexus API] User ${user.id} priority categories:`, prioritySettings.map(s => s.category_name));
+
         // If user has no priority categories, return empty result
-        if (!categorySettings || categorySettings.length === 0) {
+        if (!prioritySettings || prioritySettings.length === 0) {
+            console.log(`[Nexus API] No priority categories found for user ${user.id}`);
             return NextResponse.json({
                 posts: [],
                 page,
@@ -89,7 +95,8 @@ export async function GET(req: NextRequest) {
         }
 
         // Get category IDs from category names
-        const priorityCategoryNames = categorySettings.map(item => item.category_name);
+        const priorityCategoryNames = prioritySettings.map(item => item.category_name);
+        console.log('priorityCategoryNames', priorityCategoryNames);
         const categories = await prisma.category.findMany({
             where: {
                 name: {
@@ -98,7 +105,8 @@ export async function GET(req: NextRequest) {
                 }
             },
             select: {
-                id: true
+                id: true,
+                name: true
             }
         });
 
@@ -147,7 +155,10 @@ export async function GET(req: NextRequest) {
             });
         }
 
-        // Fetch posts ordered by date (newest first), limited to actualLimit
+        // Fetch posts from priority categories, ordered by date (newest first), limited to actualLimit
+        // Posts are filtered to only include those in the user's priority categories
+        // Using 'some' means a post will be included if it has AT LEAST ONE category in the priority list
+        // and sorted from newest to oldest based on the date field
         const posts = await prisma.post.findMany({
             where: {
                 categories: {
@@ -175,7 +186,7 @@ export async function GET(req: NextRequest) {
                     }
                 }
             },
-            orderBy: { date: 'desc' },
+            orderBy: { date: 'desc' }, // Newest posts first
             skip,
             take: actualLimit,
         });
@@ -214,11 +225,13 @@ export async function GET(req: NextRequest) {
                 : post.votes;
         });
         
+        console.log(`[Nexus API] Returning ${posts.length} posts`);
+        
         return NextResponse.json({
             posts,
             page,
             limit: actualLimit,
-            total,
+            total: Math.min(total, posts.length + (page - 1) * actualLimit),
             hasMore: skip + posts.length < total,
         });
     } catch (error) {
@@ -229,4 +242,5 @@ export async function GET(req: NextRequest) {
         );
     }
 }
+
 
