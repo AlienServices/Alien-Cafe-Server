@@ -18,7 +18,9 @@
     "fix-x-images": "ts-node --project scripts/tsconfig.json scripts/fix-x-link-preview-images.ts",
     "fix-single-x": "ts-node --project scripts/tsconfig.json scripts/fix-single-x-preview.ts",
     "fix-x-fast": "ts-node --project scripts/tsconfig.json scripts/fix-x-without-api.ts",
-    "list-x-needed": "ts-node --project scripts/tsconfig.json scripts/list-x-previews-needing-fix.ts"
+    "list-x-needed": "ts-node --project scripts/tsconfig.json scripts/list-x-previews-needing-fix.ts",
+    "update-link-preview-image": "ts-node --project scripts/tsconfig.json scripts/update-link-preview-image.ts",
+    "move-current-events": "ts-node scripts/move-current-events-to-fresh-brews.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
