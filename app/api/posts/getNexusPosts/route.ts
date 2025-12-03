@@ -3,6 +3,9 @@ import { NextResponse, NextRequest } from 'next/server';
 import { calculateAverageVoteScore } from '@/app/utils/voteUtils';
 import { createClient } from '@supabase/supabase-js';
 
+// Force dynamic rendering to prevent Vercel edge caching
+export const dynamic = 'force-dynamic'
+
 const MAX_NEXUS_POSTS = 100;
 
 function getSupabase() {
@@ -96,7 +99,8 @@ export async function GET(req: NextRequest) {
 
         // Get category IDs from category names
         const priorityCategoryNames = prioritySettings.map(item => item.category_name);
-        console.log('priorityCategoryNames', priorityCategoryNames);
+        console.log('[Nexus API] Priority category names from Supabase:', priorityCategoryNames);
+        
         const categories = await prisma.category.findMany({
             where: {
                 name: {
@@ -110,7 +114,18 @@ export async function GET(req: NextRequest) {
             }
         });
 
+        console.log('[Nexus API] Categories found in Prisma:', categories.map(c => ({ id: c.id, name: c.name })));
+        
+        // Check for mismatches
+        const foundNames = categories.map(c => c.name.toLowerCase());
+        const requestedNames = priorityCategoryNames.map(n => n.toLowerCase());
+        const missingNames = requestedNames.filter(n => !foundNames.includes(n));
+        if (missingNames.length > 0) {
+            console.warn('[Nexus API] ⚠️ Category name mismatches - requested but not found:', missingNames);
+        }
+
         const priorityCategoryIds = categories.map(cat => cat.id);
+        console.log('[Nexus API] Priority category IDs:', priorityCategoryIds);
 
         if (priorityCategoryIds.length === 0) {
             return NextResponse.json({
@@ -227,13 +242,22 @@ export async function GET(req: NextRequest) {
         
         console.log(`[Nexus API] Returning ${posts.length} posts`);
         
-        return NextResponse.json({
+        // Create response with cache control headers
+        const response = NextResponse.json({
             posts,
             page,
             limit: actualLimit,
             total: Math.min(total, posts.length + (page - 1) * actualLimit),
             hasMore: skip + posts.length < total,
         });
+        
+        // Add cache control headers to prevent caching issues
+        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.headers.set('Pragma', 'no-cache');
+        response.headers.set('Expires', '0');
+        response.headers.set('Content-Type', 'application/json');
+        
+        return response;
     } catch (error) {
         console.log('Error fetching Nexus posts:', error);
         return NextResponse.json(
