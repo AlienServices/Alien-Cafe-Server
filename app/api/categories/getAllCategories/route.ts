@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma, withRetry } from '@/lib/prisma'
 
+// Force dynamic rendering to prevent Vercel edge caching
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: NextRequest) {
   console.log("Fetching categories")
   console.log("Request URL:", req.url)
