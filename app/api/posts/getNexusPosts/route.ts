@@ -5,6 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // Force dynamic rendering to prevent Vercel edge caching
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const runtime = 'nodejs'
 
 const MAX_NEXUS_POSTS = 100;
 
@@ -66,10 +68,13 @@ export async function GET(req: NextRequest) {
             );
         }
 
+        // Use a timestamp to prevent Supabase query caching
+        const cacheBuster = Date.now();
         const { data: categorySettings, error: settingsError } = await supabase
             .from('user_category_settings')
             .select('category_name, setting')
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .order('category_name', { ascending: true }); // Add ordering to ensure consistent results
 
         if (settingsError) {
             console.error('Error fetching user category settings:', settingsError);
@@ -252,11 +257,15 @@ export async function GET(req: NextRequest) {
             hasMore: skip + posts.length < total,
         });
         
-        // Add cache control headers to prevent caching issues
-        response.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        // Add aggressive cache control headers to prevent ALL caching (Vercel edge, CDN, browser)
+        response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
         response.headers.set('Pragma', 'no-cache');
         response.headers.set('Expires', '0');
+        response.headers.set('Surrogate-Control', 'no-store');
+        response.headers.set('CDN-Cache-Control', 'no-store');
+        response.headers.set('Vercel-CDN-Cache-Control', 'no-store');
         response.headers.set('Content-Type', 'application/json');
+        response.headers.set('X-Timestamp', Date.now().toString()); // Add timestamp header for debugging
         
         return response;
     } catch (error) {
