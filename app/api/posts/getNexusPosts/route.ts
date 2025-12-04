@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
 
         // Filter to only get priority categories (exclude 'default' and 'exclude' settings)
         const prioritySettings = categorySettings?.filter(item => item.setting === 'priority') || [];
+        console.log(prioritySettings)
         
         // Log for debugging
         console.log(`[Nexus API] User ${user.id} priority categories:`, prioritySettings.map(s => s.category_name));
