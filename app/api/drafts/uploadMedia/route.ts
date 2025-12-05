@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     for (const file of files) {
       // Validate file type
       const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      const allowedVideoTypes = ['video/mp4', 'video/mov', 'video/avi', 'video/wmv', 'video/webm'];
+      const allowedVideoTypes = ['video/mp4', 'video/mov', 'video/quicktime', 'video/x-quicktime', 'video/avi', 'video/wmv', 'video/webm'];
       const isImage = allowedImageTypes.includes(file.type);
       const isVideo = allowedVideoTypes.includes(file.type);
 
