@@ -29,14 +29,18 @@ export function middleware(req: any) {
   ];
 
   const response = NextResponse.next();
-  // Re-enable CORS logic with proper Authorization header support
-  if (origin && allowedOrigins.includes(origin)) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
-  } else if (origin && origin.includes("10.1.10.")) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
-  } else {
-    response.headers.set("Access-Control-Allow-Origin", "*");
+  // Ensure we set CORS headers only once to avoid multiple origins
+  response.headers.delete("Access-Control-Allow-Origin");
+  response.headers.delete("Access-Control-Allow-Credentials");
+  response.headers.delete("Access-Control-Allow-Methods");
+  response.headers.delete("Access-Control-Allow-Headers");
+
+  let allowOrigin = "*";
+  if (origin && (allowedOrigins.includes(origin) || origin.includes("10.1.10.") || origin.includes("localhost") || origin.includes("127.0.0.1"))) {
+    allowOrigin = origin;
   }
+
+  response.headers.set("Access-Control-Allow-Origin", allowOrigin);
   response.headers.set("Access-Control-Allow-Credentials", "true");
   response.headers.set(
     "Access-Control-Allow-Methods",
@@ -71,6 +75,7 @@ export function middleware(req: any) {
 
   // Re-enable OPTIONS preflight handling
   if (req.method === "OPTIONS") {
+    // Handle CORS preflight with the same single-origin headers
     return new NextResponse(null, { status: 204, headers: response.headers });
   }
   

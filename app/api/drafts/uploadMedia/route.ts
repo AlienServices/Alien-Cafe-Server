@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse, NextRequest } from 'next/server';
 import sharp from "sharp";
 
+// Configure route to handle large payloads (for Vercel, this helps but still subject to limits)
+export const runtime = 'nodejs';
+export const maxDuration = 300; // 5 minutes max execution time
 
 function getSupabase() {
   const supabaseUrl = process.env.SUPABASE_URL;
