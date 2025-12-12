@@ -27,17 +27,6 @@ interface MediaMetadata {
   thumbnailPath?: string | null;
 }
 
-export async function OPTIONS(req: NextRequest) {
-  return new NextResponse(null, {
-    status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  });
-}
-
 export async function POST(req: NextRequest) {
   console.log("Processing draft media metadata");
   try {
@@ -107,6 +96,25 @@ export async function POST(req: NextRequest) {
         continue; // Skip unsupported types
       }
 
+      // Enforce one video per draft rule
+      if (isValidVideo && isVideo) {
+        const existingVideo = await prisma.draftMedia.findFirst({
+          where: {
+            draftId,
+            isVideo: true
+          }
+        });
+
+        if (existingVideo) {
+          // Check if this is the same video (same storagePath) - if so, we'll handle it in the duplicate check below
+          // If it's a different video, skip it to enforce one video per draft
+          if (existingVideo.storagePath !== storagePath) {
+            console.warn(`Draft already has a video (${existingVideo.storagePath}), skipping additional video: ${storagePath}`);
+            continue; // Skip this video
+          }
+        }
+      }
+
       // Verify file exists in storage (optional check)
       const { data: fileData, error: fileError } = await supabase.storage
         .from("postmedia")
@@ -120,39 +128,60 @@ export async function POST(req: NextRequest) {
         // Continue anyway - file might exist but list might fail
       }
 
-      // Extract filename from storage path (without extension for database)
-      const filename = storagePath.split('/').pop()?.split('.')[0] || 
-                      `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-      // Store metadata in database
-      console.log("Creating draft media record:", {
-        draftId,
-        filename,
-        originalName,
-        fileSize,
-        mimeType,
-        storagePath,
-        thumbnailPath,
-        isVideo,
-        order
+      // Check if media with this storagePath already exists for this draft
+      // This prevents duplicates if registerMediaMetadata is called multiple times
+      const existingMedia = await prisma.draftMedia.findFirst({
+        where: {
+          draftId,
+          storagePath
+        }
       });
+
+      let mediaRecord;
       
-      const mediaRecord = await prisma.draftMedia.create({
-        data: {
+      if (existingMedia) {
+        // Media already exists, skip creating duplicate
+        console.log("Draft media record already exists, skipping duplicate:", {
+          draftId,
+          storagePath,
+          existingId: existingMedia.id
+        });
+        mediaRecord = existingMedia;
+      } else {
+        // Extract filename from storage path (without extension for database)
+        const filename = storagePath.split('/').pop()?.split('.')[0] || 
+                        `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+        // Store metadata in database
+        console.log("Creating draft media record:", {
           draftId,
           filename,
           originalName,
-          fileSize: fileSize || 0,
+          fileSize,
           mimeType,
           storagePath,
-          thumbnailPath: thumbnailPath || null,
-          isVideo: isVideo || false,
-          order: metadata.order !== undefined ? metadata.order : order++,
-          processingStatus: 'completed'
-        }
-      });
-      
-      console.log("Draft media record created:", mediaRecord);
+          thumbnailPath,
+          isVideo,
+          order
+        });
+        
+        mediaRecord = await prisma.draftMedia.create({
+          data: {
+            draftId,
+            filename,
+            originalName,
+            fileSize: fileSize || 0,
+            mimeType,
+            storagePath,
+            thumbnailPath: thumbnailPath || null,
+            isVideo: isVideo || false,
+            order: metadata.order !== undefined ? metadata.order : order++,
+            processingStatus: 'completed'
+          }
+        });
+        
+        console.log("Draft media record created:", mediaRecord);
+      }
 
       uploadedMedia.push({
         id: mediaRecord.id,
