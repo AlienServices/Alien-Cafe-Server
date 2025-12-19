@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Post {
@@ -116,7 +115,7 @@ model Vote {
 }
 
 model Comment {
-  id       String    @id @default(cuid())
+  id       String   @id @default(cuid())
   comment  String
   vote     String
   postId   String
@@ -124,12 +123,23 @@ model Comment {
   dislikes String[]
   userId   String
   username String
-  date     DateTime  @default(now())
-  parentId String?
+
+  // Keep the Prisma field name `date` for client compatibility, but store it as `created_at`.
+  date      DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  editedAt  DateTime? @map("edited_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Keep the Prisma field name `parentId` for client compatibility, but store it as `parent_comment_id`.
+  parentId String?   @map("parent_comment_id")
   parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[] @relation("CommentReplies")
-  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, date])
+  @@index([parentId, date])
 }
 
 model Category {

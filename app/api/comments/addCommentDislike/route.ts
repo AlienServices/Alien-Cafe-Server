@@ -14,11 +14,15 @@ export async function POST(req: NextRequest) {
             select: {
                 likes: true,
                 dislikes: true, // Ensure both likes and dislikes are selected
+                deletedAt: true,
             }
         })
 
         if (!existingPost) {
             return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+        if (existingPost.deletedAt) {
+            return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
         }
 
         // Remove userId from likes if it exists

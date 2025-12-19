@@ -5,13 +5,15 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     
     try {
+        const parentId = data.parentId ?? data.commentId ?? null;
+
         const newComment = await prisma.comment.create({
             data: {
                 comment: data.comment,
                 username: data.userName ? data.userName : data.username,
                 postId: data.postId,
                 userId: data.userId,
-                parentId: data.commentId || null,
+                parentId,
                 vote: data.vote,
             },
         });
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
             },
             include: {
                 replies: {
+                    where: { deletedAt: null },
                     include: {
                         replies: true,
                     },

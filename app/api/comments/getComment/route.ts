@@ -17,10 +17,14 @@ export async function GET(req: NextRequest) {
             },
             include: {
                 replies: {
+                    where: { deletedAt: null },
                     include: {
                         replies: {
+                            where: { deletedAt: null },
                             include: {
-                                replies: true, // Continue nesting as needed
+                                replies: {
+                                    where: { deletedAt: null },
+                                }, // Continue nesting as needed
                             },
                         },
                     },
@@ -29,6 +33,11 @@ export async function GET(req: NextRequest) {
         });
 
         if (!comment) {
+            return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
+        }
+
+        // If the root comment itself is soft-deleted, treat it as not found
+        if ((comment as any).deletedAt) {
             return NextResponse.json({ error: 'Comment not found' }, { status: 404 });
         }
 

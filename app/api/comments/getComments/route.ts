@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
 
         const comment = await prisma.comment.findMany({
             where: {
-                postId: id || '',  
+                postId: id || '',
+                deletedAt: null,
             }
         });
 
