@@ -188,6 +188,11 @@ model Draft {
   collaborators DraftCollaborator[]
   media         DraftMedia[]
   linkPreviews  DraftLinkPreview[]
+  yesAction     String?
+  probablyYesAction String?
+  maybeAction   String?
+  probablyNoAction String?
+  noAction String?
 }
 
 model DraftCollaborator {
