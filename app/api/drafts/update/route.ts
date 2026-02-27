@@ -10,20 +10,19 @@ try {
   if (!admin.apps.length) {
     const serviceAccount = process.env.FCM_SERVICE_ACCOUNT_JSON;
     if (!serviceAccount) {
-      throw new Error(
-        "FCM_SERVICE_ACCOUNT_JSON environment variable is not set",
+      console.warn(
+        "FCM_SERVICE_ACCOUNT_JSON environment variable is not set; Firebase Admin not initialized",
       );
-    }
-
-    try {
-      const parsedServiceAccount = JSON.parse(serviceAccount);
-      firebaseApp = admin.initializeApp({
-        credential: admin.credential.cert(parsedServiceAccount),
-      });
-      console.log("Firebase Admin initialized successfully");
-    } catch (parseError) {
-      console.error("Error parsing FCM_SERVICE_ACCOUNT_JSON:", parseError);
-      throw new Error("Invalid FCM_SERVICE_ACCOUNT_JSON format");
+    } else {
+      try {
+        const parsedServiceAccount = JSON.parse(serviceAccount);
+        firebaseApp = admin.initializeApp({
+          credential: admin.credential.cert(parsedServiceAccount),
+        });
+        console.log("Firebase Admin initialized successfully");
+      } catch (parseError) {
+        console.error("Error parsing FCM_SERVICE_ACCOUNT_JSON:", parseError);
+      }
     }
   } else {
     const app = admin.apps[0];
