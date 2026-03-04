@@ -15,35 +15,69 @@ function getSupabase() {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    let id = searchParams.get("id") ?? undefined;
-    let userId = searchParams.get("userId") ?? undefined;
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json(
+        { error: "Authorization token is required" },
+        { status: 401 },
+      );
+    }
+    const token = authHeader.substring(7);
 
-    if (!id || !userId) {
-      try {
-        const body = await req.json();
-        id = id ?? body?.id;
-        userId = userId ?? body?.userId;
-      } catch {
-        // No JSON body provided; query params may still contain values.
-      }
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Supabase configuration error" },
+        { status: 500 },
+      );
+    }
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+    if (authError || !user || !user.email) {
+      return NextResponse.json(
+        { error: "Invalid or expired authorization token" },
+        { status: 401 },
+      );
     }
 
-    if (!id || !userId) {
+    // Look up the user in the database using their email from Supabase
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: { id: true },
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const searchParams = req.nextUrl.searchParams;
+    let id = searchParams.get("id") ?? undefined;
+    if (!id) {
+      try {
+        const body = await req.json();
+        id = body?.id;
+      } catch {}
+    }
+    if (!id) {
       return NextResponse.json(
-        { error: "Post ID and userId are required" },
+        { error: "Post ID is required" },
         { status: 400 },
       );
     }
 
+    console.log("id", id);
+
     const existingPost = await prisma.post.findFirst({
-      where: { id, userId },
+      where: { id, userId: dbUser.id },
       include: {
-        media: true,
+        media: true, // get media, etc. because we want to delete that.
         linkPreviews: true,
       },
     });
-
+    console.log("** currentUserId: ", dbUser.id);
+    console.log("** existingPost", existingPost);
     if (!existingPost) {
       return NextResponse.json(
         { error: "Post not found or unauthorized" },
@@ -51,19 +85,15 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const supabase = getSupabase();
-
     if (supabase && existingPost.media.length > 0) {
       const pathsToDelete = existingPost.media.flatMap((media) =>
         media.thumbnailPath
           ? [media.storagePath, media.thumbnailPath]
           : [media.storagePath],
       );
-
       const { error: storageDeleteError } = await supabase.storage
         .from("postmedia")
         .remove(pathsToDelete);
-
       if (storageDeleteError) {
         console.error(
           "Failed to delete one or more media files from storage:",

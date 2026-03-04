@@ -100,6 +100,8 @@ export async function GET(req: NextRequest) {
             date: true,
             userId: true,
             email: true,
+            categories: true,
+            subcategories: true,
             media: {
               select: {
                 storagePath: true,

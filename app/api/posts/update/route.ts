@@ -160,9 +160,11 @@ async function handleUpdatePost(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  console.log("Handling POST request for update");
   return handleUpdatePost(req);
 }
 
 export async function PUT(req: NextRequest) {
+  console.log("Handling PUT request for update");
   return handleUpdatePost(req);
 }
