@@ -102,6 +102,9 @@ export async function GET(req: NextRequest) {
             email: true,
             categories: true,
             subcategories: true,
+            linkPreviews: {
+              take: 1,
+            },
             media: {
               select: {
                 storagePath: true,

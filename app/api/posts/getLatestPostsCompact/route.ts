@@ -46,7 +46,9 @@ export async function GET(req: NextRequest) {
           },
         },
         subcategories: true,
-        linkPreviews: true,
+        linkPreviews: {
+          take: 1,
+        },
         media: {
           select: {
             isVideo: true,
