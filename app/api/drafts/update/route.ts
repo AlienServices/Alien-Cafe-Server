@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import * as admin from "firebase-admin";
-import MarkdownIt from "markdown-it";
-import sanitizeHtml from "sanitize-html";
+import renderSanitizedContent from "@/utils/contentUtils";
 
 // Initialize Firebase Admin if not already initialized
 let firebaseApp: admin.app.App | undefined;
@@ -57,13 +56,6 @@ export async function PUT(req: NextRequest) {
       noAction,
     } = await req.json();
 
-    console.log("📝 Draft update request:", {
-      draftId,
-      userId,
-      hasTitle: !!title,
-      hasContent: !!content,
-    });
-
     if (!draftId || !userId) {
       console.error("❌ Missing draftId or userId:", { draftId, userId });
       return NextResponse.json(
@@ -73,7 +65,6 @@ export async function PUT(req: NextRequest) {
     }
 
     // Check if user is owner or collaborator (join table)
-    console.log("🔍 Looking for draft with ID:", draftId);
     const draft = await prisma.draft.findUnique({ where: { id: draftId } });
 
     if (!draft) {
@@ -81,11 +72,6 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Draft not found" }, { status: 404 });
     }
 
-    console.log("✅ Draft found:", {
-      id: draft.id,
-      ownerId: draft.ownerId,
-      title: draft.title,
-    });
     const isOwner = draft.ownerId === userId;
     const isCollaborator = await prisma.draftCollaborator.findFirst({
       where: { draftId, userId },
@@ -93,46 +79,8 @@ export async function PUT(req: NextRequest) {
     if (!isOwner && !isCollaborator) {
       return NextResponse.json({ error: "Not authorized" }, { status: 403 });
     }
-    // Prepare Markdown → HTML → Text pipeline
-    const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
-    const ALLOWED_TAGS = [
-      "p",
-      "br",
-      "a",
-      "strong",
-      "b",
-      "em",
-      "i",
-      "u",
-      "img",
-      "video",
-      "source",
-    ];
-    const ALLOWED_ATTR = {
-      a: ["href", "target", "rel"],
-      img: ["src", "alt"],
-      video: ["src", "controls"],
-      source: ["src", "type"],
-    } as Record<string, string[]>;
-
-    const htmlFromMarkdown = contentMarkdown
-      ? md.render(contentMarkdown)
-      : undefined;
-    const rawHtml = htmlFromMarkdown ?? content ?? "";
-    const sanitizedHtml = sanitizeHtml(rawHtml, {
-      allowedTags: ALLOWED_TAGS,
-      allowedAttributes: ALLOWED_ATTR,
-      transformTags: {
-        a: sanitizeHtml.simpleTransform("a", {
-          rel: "noopener noreferrer",
-          target: "_blank",
-        }),
-      },
-    });
-    const textOnly = sanitizeHtml(sanitizedHtml, {
-      allowedTags: [],
-      allowedAttributes: {},
-    }).trim();
+    const { sanitizedHtml, textOnly, htmlFromMarkdown } =
+      renderSanitizedContent(content, contentMarkdown);
 
     // Update draft fields
     const updatedDraft = await prisma.draft.update({

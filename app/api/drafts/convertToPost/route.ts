@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import MarkdownIt from "markdown-it";
-import sanitizeHtml from "sanitize-html";
+import renderSanitizedContent from "@/utils/contentUtils";
 import { log } from "console";
 
 // Helper function for fallback file migration
@@ -107,22 +106,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("Converting draft to post:", { draftId, userId, title });
-    console.log("yesAction:", yesAction);
-    console.log(
-      "🎬 Link previews received in convertToPost request:",
-      linkPreviews
-        ? JSON.stringify(
-            linkPreviews.map((p: any) => ({
-              url: p.url,
-              isVideo: p.isVideo,
-              isVideoType: typeof p.isVideo,
-              platform: p.platform,
-            })),
-            null,
-            2,
-          )
-        : "none (will use saved draft link previews)",
-    );
 
     // Get the draft
     const draft = await prisma.draft.findFirst({
@@ -172,46 +155,8 @@ export async function POST(req: NextRequest) {
       ),
     );
 
-    // Markdown → HTML → Text pipeline
-    const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
-    const ALLOWED_TAGS = [
-      "p",
-      "br",
-      "a",
-      "strong",
-      "b",
-      "em",
-      "i",
-      "u",
-      "img",
-      "video",
-      "source",
-    ];
-    const ALLOWED_ATTR = {
-      a: ["href", "target", "rel"],
-      img: ["src", "alt"],
-      video: ["src", "controls"],
-      source: ["src", "type"],
-    } as Record<string, string[]>;
-
-    const htmlFromMarkdown = contentMarkdown
-      ? md.render(contentMarkdown)
-      : undefined;
-    const rawHtml = htmlFromMarkdown ?? content ?? "";
-    const sanitizedHtml = sanitizeHtml(rawHtml, {
-      allowedTags: ALLOWED_TAGS,
-      allowedAttributes: ALLOWED_ATTR,
-      transformTags: {
-        a: sanitizeHtml.simpleTransform("a", {
-          rel: "noopener noreferrer",
-          target: "_blank",
-        }),
-      },
-    });
-    const textOnly = sanitizeHtml(sanitizedHtml, {
-      allowedTags: [],
-      allowedAttributes: {},
-    }).trim();
+    const { sanitizedHtml, textOnly, htmlFromMarkdown } =
+      renderSanitizedContent(content, contentMarkdown);
 
     // Check if this is an update to an existing post
     const isUpdate =

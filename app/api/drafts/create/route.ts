@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import * as admin from "firebase-admin";
-import MarkdownIt from "markdown-it";
-import sanitizeHtml from "sanitize-html";
+import renderSanitizedContent from "@/utils/contentUtils";
 
 // Initialize Firebase Admin if not already initialized
 let firebaseApp: admin.app.App | undefined;
@@ -70,46 +69,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Prepare Markdown → HTML → Text pipeline (supports inline HTML for videos)
-    const md = new MarkdownIt({ html: true, linkify: true, breaks: false });
-    const ALLOWED_TAGS = [
-      "p",
-      "br",
-      "a",
-      "strong",
-      "b",
-      "em",
-      "i",
-      "u",
-      "img",
-      "video",
-      "source",
-    ];
-    const ALLOWED_ATTR = {
-      a: ["href", "target", "rel"],
-      img: ["src", "alt"],
-      video: ["src", "controls"],
-      source: ["src", "type"],
-    } as Record<string, string[]>;
-
-    const htmlFromMarkdown = contentMarkdown
-      ? md.render(contentMarkdown)
-      : undefined;
-    const rawHtml = htmlFromMarkdown ?? content ?? "";
-    const sanitizedHtml = sanitizeHtml(rawHtml, {
-      allowedTags: ALLOWED_TAGS,
-      allowedAttributes: ALLOWED_ATTR,
-      transformTags: {
-        a: sanitizeHtml.simpleTransform("a", {
-          rel: "noopener noreferrer",
-          target: "_blank",
-        }),
-      },
-    });
-    const textOnly = sanitizeHtml(sanitizedHtml, {
-      allowedTags: [],
-      allowedAttributes: {},
-    }).trim();
+    const { sanitizedHtml, textOnly, htmlFromMarkdown } =
+      renderSanitizedContent(content, contentMarkdown);
 
     // Create the draft without collaborators
     const draft = await prisma.draft.create({
